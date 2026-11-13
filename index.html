@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>スネークゲーム DX</title>
+    <style>
+      :root{
+        --bg:#eef3e6; --bg2:#ddebd0; --panel:#ffffff; --panel2:#f6f9f1;
+        --ink:#182618; --ink-dim:#5c6f5a; --line:#d3dec9;
+        --accent:#1f9d43; --accent-dark:#147232; --accent-soft:#e2f3e4;
+        --gold:#e79a00; --gold-soft:#fff3cf; --danger:#e2483d; --blue:#1f7ae0; --teal:#0e9a8b;
+        --board-bg:#122016; --board-a:#14251a; --board-b:#101e14; --board-grid:rgba(255,255,255,.055); --food:#f04438;
+        --shadow:0 12px 28px rgba(24,38,24,.14); --shadow-sm:0 4px 14px rgba(24,38,24,.10);
+        --radius:16px;
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#0d130d; --bg2:#0d130d; --panel:#1a241a; --panel2:#141d14;
+          --ink:#eff6ec; --ink-dim:#a3b89e; --line:#334431;
+          --accent:#45c766; --accent-dark:#2fa34d; --accent-soft:#1e331f;
+          --gold:#f2b02e; --gold-soft:#3a2f10; --danger:#ff7a6e; --blue:#5aa6ff; --teal:#3ec9b8;
+          --board-bg:#0a140c; --board-a:#0d1a10; --board-b:#091209; --food:#ff6b61;
+          --shadow:0 12px 28px rgba(0,0,0,.5); --shadow-sm:0 4px 14px rgba(0,0,0,.4);
+        }
+      }
+      *{box-sizing:border-box} html,body{margin:0;padding:0;overscroll-behavior:none}
+      .hidden{display:none !important}
+      body{background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+      body.locked{overflow:hidden !important;touch-action:none}
+      /* fullscreen game shell: .fs-on is applied the moment the game starts.
+         It does NOT depend on the native Fullscreen API (often blocked in
+         webviews/iframes) — the shell itself covers the whole viewport. */
+      #gameShell{border-radius:18px}
+      /* TRUE fullscreen: the shell covers the entire device viewport and the
+         game board itself fills ALL of it — no page background, no panels
+         around the board. HUD and buttons float ON the board. */
+      #gameShell.fs-on{position:fixed;inset:0;z-index:9999;background:var(--board-bg);border-radius:0;padding:0;display:flex;flex-direction:column;overflow:hidden;height:100vh;height:100dvh}
+      body.fs-locked .wrap{padding:0;max-width:none}
+      body.fs-locked header,body.fs-locked .group,body.fs-locked .howto,body.fs-locked .dpad{display:none !important}
+      #gameShell.fs-on .board-wrap{position:absolute;inset:0;z-index:0;width:auto;height:auto;margin:0;border-radius:0;box-shadow:none;aspect-ratio:auto}
+      #gameShell.fs-on .stage-banner{position:relative;z-index:5;padding:6px 10px;margin:calc(6px + env(safe-area-inset-top)) 10px 6px;font-size:.8rem;flex:none;background:rgba(8,18,10,.62);backdrop-filter:blur(3px)}
+      #gameShell.fs-on .scorebar{position:relative;z-index:5;margin:0 10px 6px;flex:none}
+      #gameShell.fs-on .stat{padding:4px 4px 5px;background:rgba(8,18,10,.55);border-color:rgba(255,255,255,.18);color:#fff;box-shadow:none;backdrop-filter:blur(3px)}
+      #gameShell.fs-on .stat .label{color:rgba(255,255,255,.68)}
+      #gameShell.fs-on .stat .value{font-size:1.08rem;color:#fff}
+      #gameShell.fs-on .stat.score .value{color:#7ee2a0}
+      #gameShell.fs-on .stat.best .value{color:var(--gold)}
+      #gameShell.fs-on .fever-label{position:relative;z-index:5;flex:none;margin:0 12px 3px;color:rgba(255,255,255,.78)}
+      #gameShell.fs-on .fever-bar{position:relative;z-index:5;margin:0 10px 0;flex:none;background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.14);box-shadow:none}
+      #gameShell.fs-on .toast{top:118px}
+      /* control buttons: small translucent chips down the right edge, on the board */
+      #gameShell.fs-on .controls-bar{position:absolute;z-index:6;right:10px;top:50%;transform:translateY(-50%);flex-direction:column;margin:0;gap:6px}
+      #gameShell.fs-on .controls-bar .btn{flex:none;min-height:2rem;font-size:.72rem;padding:6px 10px;background:rgba(10,22,13,.55);color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:none;backdrop-filter:blur(3px);white-space:nowrap}
+      @media(max-height:560px){#gameShell.fs-on .fever-label{display:none}}
+      .stage-banner{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:10px;padding:8px 11px;margin-bottom:10px;font-size:.84rem;font-weight:700;line-height:1.4}
+      .stage-banner .prog{font-variant-numeric:tabular-nums;background:rgba(255,255,255,.16);padding:3px 9px;border-radius:99px;white-space:nowrap;font-size:.8rem}
+      .stage-banner small{display:block;font-weight:600;opacity:.82;font-size:.72rem}
+      /* stage select */
+      .stage-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      @media(max-width:430px){.stage-grid{grid-template-columns:1fr}}
+      .stage-card{appearance:none;text-align:left;border:1.5px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:12px;padding:10px 11px;cursor:pointer;line-height:1.45;min-height:3.2rem}
+      .stage-card b{font-size:.92rem;display:flex;justify-content:space-between;gap:6px}
+      .stage-card small{color:var(--ink-dim);font-size:.76rem;font-weight:600}
+      .stage-card .clear-mark{color:var(--accent-dark);font-weight:900}
+      .stage-card[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+      .stage-card:disabled{opacity:.48;cursor:not-allowed}
+      .overlay-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+      button{touch-action:manipulation;font-family:inherit}
+      .wrap{max-width:600px;margin:0 auto;padding:18px 14px 44px}
+      header{text-align:center;margin-bottom:12px}
+      .title-row{display:flex;align-items:center;justify-content:center;gap:10px}
+      h1{font-size:1.85rem;margin:0;letter-spacing:.02em;line-height:1.1}
+      .dx{display:inline-block;background:var(--ink);color:var(--bg);font-size:.68rem;font-weight:800;letter-spacing:.14em;padding:4px 8px;border-radius:6px;vertical-align:middle;transform:translateY(-4px)}
+      .sub{color:var(--ink-dim);font-size:.9rem;margin:6px auto 0;line-height:1.6;max-width:46em}
+      .sub b{color:var(--ink)}
+      /* HUD */
+      .scorebar{display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+      .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 6px 8px;text-align:center;box-shadow:var(--shadow-sm);min-width:0}
+      .stat .label{font-size:.66rem;color:var(--ink-dim);letter-spacing:.09em;font-weight:700;white-space:nowrap}
+      .stat .value{font-size:1.35rem;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
+      .stat.score .value{color:var(--accent-dark)} @media(prefers-color-scheme:dark){.stat.score .value{color:var(--accent)}}
+      .stat.best .value{color:var(--gold)}
+      .stat.combo .value{font-size:1.05rem;padding-top:3px}
+      .stat.combo.hot .value{color:var(--danger)}
+      .fever-bar{height:6px;background:var(--panel);border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-bottom:10px;box-shadow:var(--shadow-sm)}
+      .fever-fill{height:100%;width:0%;background:linear-gradient(90deg,#ffb020,#ff5d3a);transition:width .18s ease}
+      .fever-label{display:flex;justify-content:space-between;font-size:.72rem;color:var(--ink-dim);font-weight:700;margin-bottom:4px}
+      .fever-label .on{color:var(--danger)}
+      /* Board */
+      .board-wrap{position:relative;background:var(--board-bg);border-radius:18px;overflow:hidden;box-shadow:var(--shadow),0 0 0 1px rgba(0,0,0,.25);aspect-ratio:1/1}
+      .board-wrap.fever{box-shadow:var(--shadow),0 0 0 2px #ff7a2e,0 0 34px rgba(255,110,30,.45)}
+      canvas{display:block;width:100%;height:100%;touch-action:none}
+      .toast{position:absolute;top:10px;left:50%;transform:translate(-50%,-8px);background:rgba(10,18,10,.88);color:#fff;font-weight:800;font-size:.86rem;padding:8px 14px;border-radius:99px;opacity:0;pointer-events:none;transition:all .22s ease;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;z-index:3}
+      .toast.show{opacity:1;transform:translate(-50%,0)}
+      .badge-row{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:2}
+      .badge{display:none;background:rgba(10,18,10,.78);color:#fff;font-size:.72rem;font-weight:800;padding:5px 9px;border-radius:99px}
+      .badge.on{display:block}
+      .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:rgba(7,13,8,.78);backdrop-filter:blur(3px);color:#f2f7f0;text-align:center;padding:20px;z-index:4}
+      .overlay.hidden{display:none}
+      .overlay .big{font-size:1.65rem;font-weight:800;margin:0;line-height:1.25}
+      .overlay .msg{font-size:.92rem;color:#cfe3cb;margin:0;line-height:1.65;max-width:30em}
+      .overlay .rank{font-size:3rem;font-weight:900;line-height:1;color:var(--gold);text-shadow:0 4px 22px rgba(232,161,0,.5)}
+      .overlay .final{display:none;width:100%;max-width:360px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:10px 14px}
+      .overlay .final.show{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;text-align:left;font-size:.88rem}
+      .overlay .final b{float:right;font-variant-numeric:tabular-nums}
+      .overlay .newbest{display:none;background:var(--gold);color:#231a00;font-weight:800;font-size:.8rem;padding:4px 12px;border-radius:99px}
+      .overlay .newbest.show{display:block}
+      .btn{appearance:none;border:none;cursor:pointer;background:var(--accent);color:#fff;font-size:1rem;font-weight:800;padding:11px 26px;border-radius:999px;min-height:2.8rem;transition:background .15s,transform .05s;box-shadow:0 6px 16px rgba(20,114,50,.35)}
+      .btn:hover{background:var(--accent-dark)} .btn:active{transform:scale(.97)}
+      .btn.ghost{background:var(--panel);color:var(--ink);border:1.5px solid var(--line);box-shadow:var(--shadow-sm)}
+      .btn.ghost:hover{background:var(--accent-soft)}
+      .btn.small{padding:8px 16px;min-height:2.4rem;font-size:.9rem}
+      .controls-bar{display:flex;gap:8px;margin-top:12px}
+      .controls-bar .btn{flex:1;padding-left:8px;padding-right:8px}
+      /* selectors */
+      .group{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow-sm)}
+      .group h2{font-size:.82rem;margin:0 0 9px;letter-spacing:.06em;color:var(--ink-dim);display:flex;justify-content:space-between;align-items:baseline}
+      .group h2 span{font-weight:600;letter-spacing:0;font-size:.76rem}
+      .chips{display:flex;gap:7px;flex-wrap:wrap}
+      .chip{appearance:none;border:1.5px solid var(--line);background:var(--panel2);color:var(--ink);font-size:.88rem;font-weight:700;padding:7px 13px;border-radius:999px;cursor:pointer;min-height:2.3rem;line-height:1.25}
+      .chip small{display:block;font-size:.68rem;font-weight:600;color:var(--ink-dim)}
+      .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+      .chip[aria-pressed="true"] small{color:rgba(255,255,255,.85)}
+      .chip:disabled{opacity:.45;cursor:not-allowed}
+      .chip .dot{display:inline-block;width:.62em;height:.62em;border-radius:50%;margin-right:.35em;vertical-align:-.05em;border:1px solid rgba(0,0,0,.2)}
+      .mode-desc{font-size:.8rem;color:var(--ink-dim);margin:8px 0 0;line-height:1.55}
+      /* missions */
+      .missions{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+      @media(max-width:430px){.missions{grid-template-columns:1fr}}
+      .mission{display:flex;gap:9px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.84rem;line-height:1.45}
+      .mission .box{flex:none;width:20px;height:20px;border-radius:6px;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#fff;margin-top:1px;background:var(--panel)}
+      .mission.done{border-color:var(--accent);background:var(--accent-soft)}
+      .mission.done .box{background:var(--accent);border-color:var(--accent)}
+      .mission .prog{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink-dim);white-space:nowrap;padding-left:6px}
+      .mission.done .prog{color:var(--accent-dark)} @media(prefers-color-scheme:dark){.mission.done .prog{color:var(--accent)}}
+      .session-line{font-size:.8rem;color:var(--ink-dim);margin-top:9px;line-height:1.6}
+      .session-line b{color:var(--ink)}
+      .howto{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow-sm)}
+      .howto h2{font-size:.95rem;margin:0 0 8px}
+      .howto ul{margin:0;padding-left:1.2em;color:var(--ink-dim);font-size:.87rem;line-height:1.8}
+      .howto b{color:var(--ink)}
+      kbd{background:var(--accent-soft);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-family:inherit;font-size:.82em}
+      .gold-txt{color:var(--gold);font-weight:700}
+      .shake{animation:shake .32s ease}
+      @keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-4px,-2px)}80%{transform:translate(4px,2px)}}
+      @media(prefers-reduced-motion:reduce){.shake{animation:none}.fever-fill{transition:none}}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="title-row"><h1>🐍 スネークゲーム <span class="dx">DELUXE</span></h1></div>
+        <p class="sub">ただのスネークじゃない。<b>コンボで稼ぎ、フィーバーで爆走し、ミッションを制覇する。</b><br>りんごを連続で食べるほど倍率アップ。金のりんご・アイテム・障害物が毎回展開を変えます。</p>
+      </header>
+
+      <div id="gameShell">
+      <div class="stage-banner" id="stageBanner"><div><span id="stageName">ステージ1 草原</span><small id="stageGoal">りんご 5個でクリア → 次のステージ解放</small></div><span class="prog" id="stageProg">🍎 0 / 5</span></div>
+      <div class="scorebar" aria-label="ステータス">
+        <div class="stat score"><div class="label">スコア</div><div class="value" id="score">0</div></div>
+        <div class="stat best"><div class="label">ベスト</div><div class="value" id="best">0</div></div>
+        <div class="stat"><div class="label">Lv / 長さ</div><div class="value" style="font-size:1.1rem;padding-top:2px"><span id="level">1</span> / <span id="length">3</span></div></div>
+        <div class="stat combo" id="comboStat"><div class="label">コンボ</div><div class="value" id="combo">—</div></div>
+      </div>
+      <div class="fever-label"><span>🔥 フィーバーゲージ（コンボ5で発動）</span><span id="feverState">あと <b id="feverNeed">5</b> コンボ</span></div>
+      <div class="fever-bar"><div class="fever-fill" id="feverFill"></div></div>
+
+      <div class="board-wrap" id="boardWrap">
+        <canvas id="board" width="640" height="640" aria-label="スネークゲームの盤面"></canvas>
+        <div class="badge-row">
+          <span class="badge" id="shieldBadge">🛡️ シールド</span>
+          <span class="badge" id="slowBadge">🐢 スロー中</span>
+        </div>
+        <div class="toast" id="toast" role="status"></div>
+        <div class="overlay" id="overlay">
+          <p class="rank hidden" id="ovRank"></p>
+          <p class="big" id="ovTitle">スネークゲーム DX</p>
+          <span class="newbest" id="ovNewBest">★ ベスト更新！</span>
+          <p class="msg" id="ovMsg">スタートで端末の画面いっぱいがゲーム画面に。操作は<b style="color:#fff">画面のどこをなぞってもOK</b>：なぞった方向にヘビが斜めにもヌルヌル進みます。指を離すとそのまま直進します。<br>素早く食べ続けると<b style="color:#ffb020">コンボ</b>が伸びて得点倍増、5連続で<b style="color:#ff7a2e">フィーバー（全得点2倍）</b>！</p>
+          <div class="final" id="ovFinal"></div>
+          <div class="overlay-btns">
+            <button class="btn" id="startBtn" type="button">▶ スタート</button>
+            <button class="btn hidden" id="nextStageBtn" type="button" style="background:#e79a00;color:#231a00">次のステージへ ➜</button>
+            <button class="btn ghost hidden" id="exitFsBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">全画面を終了</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <button class="btn ghost" id="pauseBtn" type="button">⏸ 一時停止</button>
+        <button class="btn ghost" id="resetBtn" type="button">↺ 最初から</button>
+        <button class="btn ghost" id="soundBtn" type="button" aria-pressed="true">🔊 音 ON</button>
+        <button class="btn ghost" id="fsBtn" type="button">⛶ 全画面</button>
+      </div>
+
+      </div><!-- /gameShell -->
+
+      <section class="group" aria-label="ステージ選択">
+        <h2>ステージ <span id="stageHint">クリアで次が解放されます</span></h2>
+        <div class="stage-grid" id="stageGrid"></div>
+        <p class="mode-desc" id="stageDesc">ステージ1：障害物なし。りんご5個でクリア。</p>
+        <p class="mode-desc" style="margin-top:6px">🕹️ <b>自由移動（画面なぞり操作）：</b>ヘビはマス目に縛られません。プレイ中は画面のどこをなぞっても、その方向へ<b>斜め・カーブ</b>まで思い通りの角度で滑らかに進みます。指を離すとそのまま直進します。方向キーではヘビは動きません。</p>
+      </section>
+
+      <section class="group" aria-label="モード選択">
+        <h2>モード <span>途中で変えると次のゲームから適用</span></h2>
+        <div class="chips" role="group" aria-label="モード">
+          <button class="chip mode-chip" type="button" data-mode="classic" aria-pressed="true">クラシック<small>壁はすり抜ける</small></button>
+          <button class="chip mode-chip" type="button" data-mode="wrap" aria-pressed="false">ラップ<small>壁をすり抜ける</small></button>
+          <button class="chip mode-chip" type="button" data-mode="chaos" aria-pressed="false">カオス<small>壁すり抜け＋障害物が増殖</small></button>
+        </div>
+        <p class="mode-desc" id="modeDesc">壁はすり抜けて反対側から出てくる。自分の体と岩に当たったら終わり。迷ったらこれ。</p>
+      </section>
+
+      <section class="group" aria-label="スピードとスキン">
+        <h2>スピード＆スキン <span id="skinHint">スキンは累計りんごで解放</span></h2>
+        <div class="chips" role="group" aria-label="スピード" style="margin-bottom:9px">
+          <button class="chip speed-chip" type="button" data-speed="slow" aria-pressed="false">ゆっくり</button>
+          <button class="chip speed-chip" type="button" data-speed="normal" aria-pressed="true">ふつう</button>
+          <button class="chip speed-chip" type="button" data-speed="fast" aria-pressed="false">はやい</button>
+          <button class="chip speed-chip" type="button" data-speed="insane" aria-pressed="false">激ムズ ⚡</button>
+        </div>
+        <div class="chips" role="group" aria-label="スキン" id="skinRow">
+          <button class="chip skin-chip" type="button" data-skin="green" aria-pressed="true"><span class="dot" style="background:#35b356"></span>みどり</button>
+          <button class="chip skin-chip" type="button" data-skin="blue" aria-pressed="false" disabled><span class="dot" style="background:#2f8fe8"></span>あお 🔒10個</button>
+          <button class="chip skin-chip" type="button" data-skin="red" aria-pressed="false" disabled><span class="dot" style="background:#e8483f"></span>あか 🔒25個</button>
+          <button class="chip skin-chip" type="button" data-skin="gold" aria-pressed="false" disabled><span class="dot" style="background:#e8a100"></span>きん 🔒50個</button>
+        </div>
+      </section>
+
+      <section class="group" aria-label="ミッション">
+        <h2>ミッション（全18） <span>達成ごとに +30点ボーナス</span></h2>
+        <ul class="missions" id="missions"></ul>
+        <p class="session-line" id="sessionLine">このセッション： 0 ゲーム ／ 累計りんご 0 個</p>
+      </section>
+
+      <section class="howto">
+        <h2>遊び方と稼ぎ方</h2>
+        <ul>
+          <li><b>操作（画面なぞり）：</b>画面のどこをなぞっても、その方向にヘビがヌルヌル曲がります（斜めもカーブもOK）。なぞる指の動きに合わせて角度が変わるので、細かい方向調整もできます。指を離すとそのまま直進します。方向キー／WASDではヘビは動きません。<kbd>Space</kbd> 一時停止、<kbd>Enter</kbd> リスタート</li>
+          <li><b>コンボ：</b>3.5秒以内に次を食べると継続。コンボ数だけボーナス加算（最大+20/個）</li>
+          <li><b>フィーバー：</b>コンボ5で8秒間ぜんぶ2倍＆少し加速。ここで金のりんごを取ると <b>+100点</b></li>
+          <li><span class="gold-txt">金のりんご +50点</span>（制限時間つき）／ <b>⭐スター +100点</b> ／ <b>🛡️シールド</b>＝1回だけ死なない ／ <b>🐢スロー</b>＝8秒ゆっくりに</li>
+          <li><b>壁：</b>画面端の壁にぶつかってもゲームオーバーにはなりません。すり抜けて反対側から出てきます（全モード共通）。ゲームオーバーになるのは自分の体と岩（障害物）に当たったときだけです</li>
+          <li><b>ステージ：</b>全10ステージ。目標のりんごを食べるとクリアで、次のステージが解放されます。全画面で遊ぶのでスワイプで画面がスクロールしません</li>
+          <li><b>なめらか移動：</b>ステージ自体はブロック状の壁でも、ヘビ本体は座標を連続計算する別レイヤーで動くので、ブロックに縛られず自由な角度で移動できます</li>
+          <li><b>レベル：</b>りんご5個ごとにLvアップして加速。カオスではLvごとに障害物が増えます</li>
+          <li><b>ランク：</b>ゲームオーバー時のスコアで C→B→A→S→SS 評価。SSは800点〜</li>
+        </ul>
+      </section>
+    </div>
+
+    <script>
+    (function(){
+      "use strict";
+      var COLS=20, ROWS=20;
+      var canvas=document.getElementById("board"), ctx=canvas.getContext("2d");
+      var boardWrap=document.getElementById("boardWrap");
+      var scoreEl=document.getElementById("score"), bestEl=document.getElementById("best"),
+          lenEl=document.getElementById("length"), levelEl=document.getElementById("level"),
+          comboEl=document.getElementById("combo"), comboStat=document.getElementById("comboStat"),
+          feverFill=document.getElementById("feverFill"), feverNeed=document.getElementById("feverNeed"),
+          feverState=document.getElementById("feverState"),
+          overlay=document.getElementById("overlay"), ovTitle=document.getElementById("ovTitle"),
+          ovMsg=document.getElementById("ovMsg"), ovFinal=document.getElementById("ovFinal"),
+          ovRank=document.getElementById("ovRank"), ovNewBest=document.getElementById("ovNewBest"),
+          startBtn=document.getElementById("startBtn"), pauseBtn=document.getElementById("pauseBtn"),
+          resetBtn=document.getElementById("resetBtn"), soundBtn=document.getElementById("soundBtn"),
+          toastEl=document.getElementById("toast"),
+          shieldBadge=document.getElementById("shieldBadge"), slowBadge=document.getElementById("slowBadge"),
+          missionsEl=document.getElementById("missions"), sessionLine=document.getElementById("sessionLine"),
+          modeDesc=document.getElementById("modeDesc"),
+          gameShell=document.getElementById("gameShell"), stageGrid=document.getElementById("stageGrid"),
+          stageDesc=document.getElementById("stageDesc"), stageNameEl=document.getElementById("stageName"),
+          stageGoalEl=document.getElementById("stageGoal"), stageProgEl=document.getElementById("stageProg"),
+          stageHint=document.getElementById("stageHint"),
+          nextStageBtn=document.getElementById("nextStageBtn"), exitFsBtn=document.getElementById("exitFsBtn"),
+          fsBtn=document.getElementById("fsBtn");
+
+      var SPEEDS={slow:165,normal:118,fast:82,insane:62};
+      var MODES={
+        classic:"壁はすり抜けて反対側から出てくる。自分の体と岩に当たったら終わり。迷ったらこれ。",
+        wrap:"壁はすり抜けて反対側から出てくる。逃げ道が多いぶん、自分に絡まりやすい。",
+        chaos:"壁はすり抜けて反対側から出てくる。レベルが上がるたび岩の障害物が出現。金のりんごも出やすい高得点モード。"
+      };
+      var SKINS={
+        green:{head:"#8bf09d",body:"#2fb84d",dark:"#157a31",belly:"#bff0c9"},
+        blue:{head:"#9fd2ff",body:"#2f8fe8",dark:"#1665b0",belly:"#d3eaff"},
+        red:{head:"#ffb0a6",body:"#e8483f",dark:"#a9231b",belly:"#ffd9d4"},
+        gold:{head:"#ffe58a",body:"#e8a100",dark:"#9c6d00",belly:"#fff0bd"}
+      };
+      var SKIN_UNLOCK={green:0,blue:10,red:25,gold:50};
+
+      var speedKey="normal", modeKey="classic", skinKey="green";
+      var snake, prevSnake, dir, nextDirs, food, gold, goldExpires, power, powerNextAt;
+      var obstacles, score, best=0, state="idle", level, apples, goldEaten, combo, maxCombo, lastEatAt;
+      var shield, slowUntil, feverUntil, runStart, elapsedBefore, pausedAt;
+      var particles=[], floats=[], shakeUntil=0;
+      var lastStep=0, rafId=null;
+      var sessionGames=0, sessionApples=0;
+      var soundOn=true, audioCtx=null;
+      var toastTimer=null;
+      /* stage & extended mission trackers */
+      var currentStage=0, highestUnlocked=0, clearedStages={};
+      var starEaten=0, shieldGot=0, slowGot=0, feverCount=0;
+      /* ---- free (continuous) movement state: NOT grid-locked ---- */
+      var hx=9.5, hy=10.5, angle=0, targetAngle=0, segCount=3, trail=[];
+      var pointerTarget=null, pointerDown=false, keysDown={}, selfGraceUntil=0, lastFrameTs=0;
+      var FREE_SPEEDS={slow:5.0,normal:7.2,fast:10.2,insane:13.2};
+      /* view transform: in fullscreen the canvas backing covers the whole
+         viewport; the square field is centered and the checkerboard pattern
+         is extended over the margins so the entire screen is the game board */
+      var VIEW={cell:32,ox:0,oy:0};
+      function speedCells(){ var s=FREE_SPEEDS[speedKey]*(1+(level-1)*0.045+Math.max(0,segCount-3)*0.006); if(now()<slowUntil)s*=0.6; if(now()<feverUntil)s*=1.08; return s; }
+      function angDiff(a,b){ var d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
+      function resetTrail(){ hx=9.5; hy=10.5; angle=0; targetAngle=0; trail=[]; for(var i=0;i<90;i++){ trail.push({x:hx-i*0.06,y:hy}); } pointerTarget=null; pointerDown=false; selfGraceUntil=now()+1200; syncSnakeFromTrail(); }
+      function resampleBody(){
+        /* Walk the trail accumulating distance; place a point every 0.82 cells. Reliable + smooth. */
+        var pts=[{x:trail[0].x,y:trail[0].y}], acc=0, need=0.82;
+        for(var i=1;i<trail.length&&pts.length<segCount;i++){
+          var a=trail[i-1], b=trail[i], dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy);
+          if(d>1.5||d===0) continue;
+          var segStart=0;
+          while(acc+d-segStart>=need && pts.length<segCount){
+            var tt=(segStart+(need-acc))/d;
+            pts.push({x:a.x+dx*tt, y:a.y+dy*tt});
+            segStart+=(need-acc); acc=0; d-=0; /* recompute remaining handled by loop guard */ d=Math.hypot(dx,dy); /* keep simple: break after one per step */
+            break;
+          }
+          if(pts.length>=segCount) break;
+          /* if no point placed on this step, accumulate */
+          if(!(acc+d>=need)) acc+=d; else if(acc+d>=need && pts.length && Math.hypot(pts[pts.length-1].x-b.x,pts[pts.length-1].y-b.y)>0.4){ /* point already placed */ acc=Math.max(0,acc+d-need); }
+        }
+        while(pts.length<segCount){ var last=pts[pts.length-1]; pts.push({x:last.x-Math.cos(angle)*0.82,y:last.y-Math.sin(angle)*0.82}); }
+        return pts;
+      }
+      function syncSnakeFromTrail(){ if(trail.length) snake=resampleBody(); }
+
+      var STAGES=[
+        {name:"草原", target:5, desc:"障害物なし。まずは基本操作でりんご5個。"},
+        {name:"四隅の岩", target:7, desc:"四隅に岩ブロック。中央を広く使おう。りんご7個でクリア。"},
+        {name:"二本の壁", target:8, desc:"上下に横壁、真ん中に抜け道あり。りんご8個でクリア。"},
+        {name:"十字路", target:10, desc:"十字の壁が交差。行き止まりに注意。りんご10個でクリア。"},
+        {name:"ジグザグ回廊", target:10, desc:"互い違いの縦壁を縫って進む。りんご10個でクリア。"},
+        {name:"外周の回廊", target:12, desc:"外周に沿った枠と開口部。大きく回るルートが安全。りんご12個でクリア。"},
+        {name:"迷宮の入口", target:12, desc:"短い壁が迷路状に並ぶ。先読みが大事。りんご12個でクリア。"},
+        {name:"柱の森", target:14, desc:"柱が点在。体の長さ管理が勝負。りんご14個でクリア。"},
+        {name:"渦巻き", target:15, desc:"渦巻き状の壁。内側に入るタイミングを見極めよう。りんご15個でクリア。"},
+        {name:"王の迷宮", target:18, desc:"最終ステージ。壁・柱・回廊の複合迷宮。りんご18個で完全クリア！"}
+      ];
+      function stageObstacles(idx){
+        var obs=[], seen={};
+        function add(x,y){
+          if(x<0||x>=COLS||y<0||y>=ROWS) return;
+          if(y===10&&x>=6&&x<=12) return; /* start lane */
+          if(x===9&&y===10) return;
+          var k=x+","+y; if(seen[k])return; seen[k]=true; obs.push({x:x,y:y});
+        }
+        function h(x1,x2,y){for(var x=x1;x<=x2;x++)add(x,y);}
+        function v(x,y1,y2){for(var y=y1;y<=y2;y++)add(x,y);}
+        function b(x,y,w,hh){for(var xx=x;xx<x+w;xx++)for(var yy=y;yy<y+hh;yy++)add(xx,yy);}
+        switch(idx){
+          case 0: break;
+          case 1: b(2,2,2,2); b(16,2,2,2); b(2,16,2,2); b(16,16,2,2); break;
+          case 2: h(3,8,6); h(11,16,6); h(3,8,13); h(11,16,13); break;
+          case 3: v(10,3,8); v(10,11,16); h(3,8,10); h(11,16,10); break;
+          case 4: v(6,3,11); v(13,8,16); v(6,14,16); /* staggered */ h(6,13,5); break;
+          case 5: h(2,17,3); h(2,17,16); v(2,3,10); v(17,9,16); v(2,13,16); v(17,3,7); break;
+          case 6: h(4,11,5); v(15,5,12); h(8,15,14); v(4,9,14); h(4,7,9); break;
+          case 7: b(4,4,2,2); b(9,4,2,2); b(14,4,2,2); b(4,9,2,2); b(14,9,2,2); b(4,14,2,2); b(9,14,2,2); b(14,14,2,2); break;
+          case 8: h(5,14,5); v(14,5,12); h(6,14,12); v(6,8,12); h(6,10,8); break;
+          case 9: b(3,3,2,2); b(15,3,2,2); h(6,13,6); v(6,6,13); v(13,6,13); h(6,13,13); b(9,9,2,2); b(3,15,2,2); b(15,15,2,2); break;
+        }
+        return obs;
+      }
+
+      var MISSIONS=[
+        {id:"len12", text:"長さ12に到達", goal:function(){return Math.min(snake?snake.length:3,12);}, target:12, unit:""},
+        {id:"len16", text:"長さ16に到達", goal:function(){return Math.min(snake?snake.length:3,16);}, target:16, unit:""},
+        {id:"len20", text:"長さ20に到達", goal:function(){return Math.min(snake?snake.length:3,20);}, target:20, unit:""},
+        {id:"score300", text:"スコア300点", goal:function(){return Math.min(score,300);}, target:300, unit:"点"},
+        {id:"score600", text:"スコア600点", goal:function(){return Math.min(score,600);}, target:600, unit:"点"},
+        {id:"score1000", text:"スコア1000点", goal:function(){return Math.min(score,1000);}, target:1000, unit:"点"},
+        {id:"apples15", text:"1プレイでりんご15個", goal:function(){return Math.min(apples||0,15);}, target:15, unit:"個"},
+        {id:"apples25", text:"1プレイでりんご25個", goal:function(){return Math.min(apples||0,25);}, target:25, unit:"個"},
+        {id:"gold2", text:"金のりんごを2個", goal:function(){return Math.min(goldEaten,2);}, target:2, unit:"個"},
+        {id:"gold5", text:"金のりんごを5個", goal:function(){return Math.min(goldEaten,5);}, target:5, unit:"個"},
+        {id:"combo5", text:"5コンボ達成", goal:function(){return Math.min(maxCombo,5);}, target:5, unit:""},
+        {id:"combo8", text:"8コンボ達成", goal:function(){return Math.min(maxCombo,8);}, target:8, unit:""},
+        {id:"lv3", text:"レベル3に到達", goal:function(){return Math.min(level,3);}, target:3, unit:""},
+        {id:"lv5", text:"レベル5に到達", goal:function(){return Math.min(level,5);}, target:5, unit:""},
+        {id:"time60", text:"60秒生き残る", goal:function(){return Math.min(Math.floor(elapsedSec()),60);}, target:60, unit:"秒"},
+        {id:"time120", text:"120秒生き残る", goal:function(){return Math.min(Math.floor(elapsedSec()),120);}, target:120, unit:"秒"},
+        {id:"items", text:"スター・シールド・スローを各1回", goal:function(){return (starEaten>0&&shieldGot>0&&slowGot>0)?1:0;}, target:1, unit:""},
+        {id:"fever2", text:"フィーバーを2回発動（累計）", goal:function(){return Math.min(feverCount,2);}, target:2, unit:"回"},
+        {id:"stage3", text:"ステージ3をクリア", goal:function(){return clearedStages[2]?1:0;}, target:1, unit:""},
+        {id:"stage10", text:"ステージ10をクリア（完全制覇）", goal:function(){return clearedStages[9]?1:0;}, target:1, unit:""}
+      ];
+      var missionDone={};
+
+      var colorCache={a:"#14251a",b:"#101e14",food:"#f04438"};
+      function refreshColors(){
+        colorCache.a=cssVar("--board-a")||colorCache.a;
+        colorCache.b=cssVar("--board-b")||colorCache.b;
+        colorCache.food=cssVar("--food")||colorCache.food;
+      }
+      function now(){return performance.now();}
+      function elapsedSec(){
+        if(!runStart) return 0;
+        var end=(state==="paused"&&pausedAt)?pausedAt:(state==="playing"?now():lastStep||now());
+        if(state==="over"||state==="idle") end=lastStep||now();
+        return Math.max(0,(end-runStart-elapsedBefore)/1000);
+      }
+      function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+      /* ---------- sound ---------- */
+      function ac(){
+        if(!soundOn) return null;
+        try{
+          if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+          if(audioCtx.state==="suspended") audioCtx.resume();
+          return audioCtx;
+        }catch(e){return null;}
+      }
+      function tone(f0,f1,dur,type,vol,delay){
+        var c=ac(); if(!c) return;
+        var t=c.currentTime+(delay||0);
+        var o=c.createOscillator(), g=c.createGain();
+        o.type=type||"square"; o.frequency.setValueAtTime(f0,t);
+        if(f1&&f1!==f0) o.frequency.exponentialRampToValueAtTime(Math.max(f1,1),t+dur);
+        g.gain.setValueAtTime(vol||0.06,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+        o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
+      }
+      var sEat=function(){tone(540,880,.09,"square",.05);};
+      var sGold=function(){tone(880,880,.08,"square",.06);tone(1180,1180,.09,"square",.06,.07);tone(1560,1560,.14,"square",.06,.15);};
+      var sPower=function(){tone(420,980,.16,"triangle",.09);};
+      var sLevel=function(){tone(660,660,.07,"square",.06);tone(990,990,.12,"square",.06,.07);};
+      var sFever=function(){tone(520,1040,.22,"sawtooth",.05);tone(780,1560,.22,"sawtooth",.04,.05);};
+      var sShieldBreak=function(){tone(300,90,.25,"sawtooth",.09);};
+      var sOver=function(){tone(440,110,.5,"triangle",.09);};
+      function vibrate(ms){ if(navigator.vibrate){ try{navigator.vibrate(ms);}catch(e){} } }
+
+      /* ---------- toast ---------- */
+      function toast(msg,ms){
+        toastEl.textContent=msg; toastEl.classList.add("show");
+        if(toastTimer) clearTimeout(toastTimer);
+        toastTimer=setTimeout(function(){toastEl.classList.remove("show");},ms||1700);
+      }
+
+      /* ---------- board helpers ---------- */
+      function key(x,y){return x+","+y;}
+      function randomEmptyCell(){
+        var occ={};
+        (snake||[]).forEach(function(s){occ[key(Math.floor(s.x),Math.floor(s.y))]=true;});
+        obstacles.forEach(function(o){occ[key(o.x,o.y)]=true;});
+        if(food)occ[key(food.x,food.y)]=true;
+        if(gold)occ[key(gold.x,gold.y)]=true;
+        if(power)occ[key(power.x,power.y)]=true;
+        var free=[];
+        for(var x=0;x<COLS;x++)for(var y=0;y<ROWS;y++) if(!occ[key(x,y)]) free.push({x:x,y:y});
+        if(!free.length)return null;
+        return free[Math.floor(Math.random()*free.length)];
+      }
+      function placeFood(){ food=randomEmptyCell(); }
+      function maybeSpawnGold(force){
+        if(gold) return;
+        var chance = modeKey==="chaos"?0.34:0.24;
+        if(force||Math.random()<chance){
+          var c=randomEmptyCell(); if(c){gold=c; goldExpires=now()+7000;}
+        }
+      }
+      var POWER_TYPES=["star","shield","slow"];
+      var powerIdx=0;
+      function maybeSpawnPower(t){
+        if(power||t<powerNextAt) return;
+        var c=randomEmptyCell(); if(!c) return;
+        var type=POWER_TYPES[powerIdx%POWER_TYPES.length]; powerIdx++;
+        power={x:c.x,y:c.y,type:type,expires:t+9000};
+      }
+      function addObstacle(){
+        var c=randomEmptyCell(); if(c) obstacles.push(c);
+      }
+
+      /* ---------- effects ---------- */
+      function burst(cell,color,n){
+        var cw=VIEW.cell||canvas.width/COLS;
+        for(var i=0;i<(n||14);i++){
+          var a=Math.random()*Math.PI*2, sp=0.6+Math.random()*2.4;
+          particles.push({x:(cell.x+0.5)*cw,y:(cell.y+0.5)*cw,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-0.6,life:1,decay:0.02+Math.random()*0.025,r:2+Math.random()*3.5,color:color});
+        }
+      }
+      function floatText(cell,text,color){
+        floats.push({x:cell.x,y:cell.y,text:text,color:color||"#fff",life:1});
+      }
+
+      /* ---------- stages & fullscreen ---------- */
+      function updateStageBanner(){
+        if(!STAGES[currentStage]) return;
+        stageNameEl.textContent="ステージ"+(currentStage+1)+" "+STAGES[currentStage].name;
+        stageGoalEl.textContent="りんご "+STAGES[currentStage].target+"個でクリア → 次のステージ解放";
+        stageProgEl.textContent="🍎 "+(apples||0)+" / "+STAGES[currentStage].target;
+        if(stageDesc) stageDesc.textContent="ステージ"+(currentStage+1)+"："+STAGES[currentStage].desc;
+        if(stageHint) stageHint.textContent="制覇 "+Object.keys(clearedStages).length+" / "+STAGES.length+" ステージ";
+      }
+      function renderStages(){
+        stageGrid.innerHTML="";
+        STAGES.forEach(function(st,idx){
+          var b=document.createElement("button");
+          b.type="button"; b.className="stage-card"; b.setAttribute("aria-pressed",idx===currentStage?"true":"false");
+          b.disabled=idx>highestUnlocked;
+          b.innerHTML="<b><span>ステージ"+(idx+1)+" "+st.name+"</span>"+(clearedStages[idx]?"<span class='clear-mark'>✓ クリア</span>":(idx>highestUnlocked?"<span>🔒</span>":""))+"</b><small>目標：りんご"+st.target+"個 ／ "+st.desc+"</small>";
+          b.addEventListener("click",function(){ currentStage=idx; if(state!=="playing"){ resetGame(); state="idle"; } renderStages(); updateStageBanner(); toast("ステージ"+(idx+1)+"「"+st.name+"」を選択"); });
+          stageGrid.appendChild(b);
+        });
+        updateStageBanner();
+      }
+      function enterFullscreen(){
+        /* Apply the viewport-covering layout IMMEDIATELY and unconditionally:
+           the previous build only resized the board inside the normal page
+           flow and depended on the native Fullscreen API, which is blocked
+           or absent in many webviews — so it never actually went fullscreen. */
+        document.body.classList.add("locked","fs-locked");
+        gameShell.classList.add("fs-on");
+        exitFsBtn.classList.remove("hidden");
+        fsBtn.textContent="⛶ 終了";
+        window.scrollTo(0,0);
+        fitBoard(); setTimeout(fitBoard,60); setTimeout(fitBoard,320);
+        /* Native fullscreen is a bonus on top (desktop / Android Chrome). */
+        try{
+          if(!document.fullscreenElement && document.documentElement.requestFullscreen){
+            var p=document.documentElement.requestFullscreen({navigationUI:"hide"});
+            if(p&&p.catch) p.catch(function(){});
+          }
+        }catch(e){}
+      }
+      function fitBoard(){
+        /* Fullscreen: the board wrap already covers the whole shell
+           (position:absolute; inset:0). Match the canvas backing store to
+           the real on-screen size so draw() can center the square field
+           and extend the checkerboard across every pixel of the screen. */
+        if(!gameShell.classList.contains("fs-on")){
+          boardWrap.style.width=""; boardWrap.style.height="";
+          if(canvas.width!==640||canvas.height!==640){ canvas.width=640; canvas.height=640; }
+          VIEW.cell=canvas.width/COLS; VIEW.ox=0; VIEW.oy=0;
+          return;
+        }
+        var w=boardWrap.clientWidth||gameShell.clientWidth, h=boardWrap.clientHeight||gameShell.clientHeight;
+        if(!w||!h) return;
+        var dpr=Math.min(window.devicePixelRatio||1,2);
+        var W=Math.round(w*dpr), H=Math.round(h*dpr);
+        if(canvas.width!==W||canvas.height!==H){ canvas.width=W; canvas.height=H; }
+        var side=Math.min(W,H);
+        VIEW.cell=side/COLS; VIEW.ox=(W-side)/2; VIEW.oy=(H-side)/2;
+      }
+      function exitFullscreen(){
+        gameShell.classList.remove("fs-on");
+        document.body.classList.remove("locked","fs-locked");
+        exitFsBtn.classList.add("hidden");
+        fsBtn.textContent="⛶ 全画面";
+        boardWrap.style.width=""; boardWrap.style.height="";
+        fitBoard();
+        if(document.fullscreenElement&&document.exitFullscreen){ document.exitFullscreen().catch(function(){}); }
+      }
+      function stageClear(){
+        state="clear"; lastStep=now();
+        clearedStages[currentStage]=true;
+        if(currentStage+1<STAGES.length) highestUnlocked=Math.max(highestUnlocked,currentStage+1);
+        var bonus=100+currentStage*20; score+=bonus;
+        if(score>best) best=score;
+        sessionGames++; sessionApples+=apples;
+        sFever(); vibrate([40,40,80]); refreshSkins();
+        ovRank.textContent="★"; ovRank.classList.remove("hidden"); ovRank.style.display="block";
+        var isLast=currentStage>=STAGES.length-1;
+        ovTitle.textContent=isLast?"🎉 全ステージ制覇！":"🎉 ステージ"+(currentStage+1)+" クリア！";
+        ovMsg.textContent=isLast?"最終ステージ「王の迷宮」まで制覇。自由移動を使いこなした真のスネークマスター！":("「"+STAGES[currentStage].name+"」クリア！ クリアボーナス +"+bonus+"点。次のステージ「"+STAGES[currentStage+1].name+"」が解放されました。");
+        ovNewBest.classList.remove("show");
+        ovFinal.innerHTML="<span>スコア <b>"+score+" 点</b></span><span>ベスト <b>"+best+" 点</b></span><span>りんご <b>"+apples+" 個</b></span><span>長さ <b>"+segCount+"</b></span><span>最大コンボ <b>"+maxCombo+"</b></span><span>生存 <b>"+Math.floor(elapsedSec())+" 秒</b></span>";
+        ovFinal.classList.add("show");
+        startBtn.textContent="↺ このステージを再挑戦";
+        nextStageBtn.classList.toggle("hidden",isLast);
+        nextStageBtn.textContent=isLast?"":"次のステージへ ➜";
+        exitFsBtn.classList.remove("hidden");
+        overlay.classList.remove("hidden");
+        checkMissions(); renderStages(); renderMissions(); updateHud();
+      }
+
+      /* ---------- game setup ---------- */
+      function resetGame(){
+        segCount=3; resetTrail();
+        snake=resampleBody();
+        prevSnake=snake.map(function(s){return{x:s.x,y:s.y};});
+        dir={x:1,y:0}; nextDirs=[];
+        obstacles=[]; score=0; level=1; apples=0; goldEaten=0;
+        combo=0; maxCombo=0; lastEatAt=0;
+        shield=false; slowUntil=0; feverUntil=0;
+        gold=null; power=null; powerNextAt=now()+9000;
+        particles=[]; floats=[];
+        missionDone={};
+        starEaten=0; shieldGot=0; slowGot=0;
+        obstacles=stageObstacles(currentStage);
+        if(modeKey==="chaos"){ addObstacle(); addObstacle(); addObstacle(); }
+        placeFood();
+        updateStageBanner();
+        runStart=0; elapsedBefore=0; pausedAt=0;
+        updateHud(); renderMissions();
+      }
+      function tickMs(){
+        var base=SPEEDS[speedKey];
+        var t=base-(level-1)*6-Math.floor((snake?snake.length:3)/6)*4;
+        t=Math.max(48,t);
+        if(now()<slowUntil) t*=1.55;
+        if(now()<feverUntil) t*=0.92;
+        return t;
+      }
+      function isFever(){return now()<feverUntil;}
+
+      function updateHud(){
+        scoreEl.textContent=score; bestEl.textContent=best;
+        levelEl.textContent=level; lenEl.textContent=segCount;
+        if(combo>=2){ comboEl.textContent="×"+combo+(isFever()?" 🔥":""); comboStat.classList.toggle("hot",combo>=4||isFever()); }
+        else { comboEl.textContent="—"; comboStat.classList.remove("hot"); }
+        var need=Math.max(0,5-combo);
+        if(isFever()){ feverFill.style.width="100%"; feverState.innerHTML="<span class='on'>🔥 フィーバー中！ 全得点2倍</span>"; }
+        else { feverFill.style.width=(Math.min(combo,5)/5*100)+"%"; feverState.innerHTML="あと <b>"+need+"</b> コンボ"; }
+        shieldBadge.classList.toggle("on",!!shield);
+        slowBadge.classList.toggle("on",now()<slowUntil);
+        boardWrap.classList.toggle("fever",isFever());
+        updateStageBanner();
+        sessionLine.innerHTML="このセッション： <b>"+sessionGames+"</b> ゲーム ／ 累計りんご <b>"+sessionApples+"</b> 個"+(best>0?" ／ ベスト <b>"+best+"</b> 点":"");
+      }
+      function renderMissions(){
+        missionsEl.innerHTML="";
+        MISSIONS.forEach(function(m){
+          var li=document.createElement("li");
+          li.className="mission"+(missionDone[m.id]?" done":"");
+          var cur=0; try{cur=m.goal();}catch(e){cur=0;}
+          li.innerHTML="<span class='box'>"+(missionDone[m.id]?"✓":"")+"</span><span>"+m.text+"</span><span class='prog'>"+cur+" / "+m.target+m.unit+"</span>";
+          missionsEl.appendChild(li);
+        });
+      }
+      function checkMissions(){
+        var changed=false;
+        MISSIONS.forEach(function(m){
+          if(!missionDone[m.id] && m.goal()>=m.target){
+            missionDone[m.id]=true; changed=true;
+            score+=30; toast("🎯 ミッション達成「"+m.text+"」 +30点"); sPower();
+          }
+        });
+        if(changed) renderMissions();
+      }
+      function refreshSkins(){
+        document.querySelectorAll(".skin-chip").forEach(function(chip){
+          var k=chip.getAttribute("data-skin");
+          var unlocked=sessionApples>=SKIN_UNLOCK[k];
+          chip.disabled=!unlocked;
+          if(unlocked && chip.textContent.indexOf("🔒")>=0){
+            chip.innerHTML=chip.innerHTML.replace(/ 🔒\d+個/,"");
+            toast("🎨 スキン解放！「"+chip.textContent.trim()+"」が使えるように");
+          }
+        });
+      }
+
+      /* ---------- core step ---------- */
+      function gameOver(){
+        if(state==="over"||state==="clear") return;
+        state="over"; lastStep=now(); vibrate([60,40,120]); sOver();
+        nextStageBtn.classList.add("hidden"); exitFsBtn.classList.remove("hidden");
+        shakeUntil=now()+320; boardWrap.classList.remove("shake"); void boardWrap.offsetWidth; boardWrap.classList.add("shake");
+        var isBest=score>best; if(isBest) best=score;
+        sessionGames++; sessionApples+=apples;
+        refreshSkins(); updateHud(); renderMissions();
+        var rank= score>=800?"SS":score>=550?"S":score>=380?"A":score>=220?"B":score>=100?"C":"D";
+        ovRank.textContent=rank; ovRank.classList.remove("hidden"); ovRank.style.display="block";
+        ovTitle.textContent="ゲームオーバー";
+        ovMsg.textContent= rank==="SS"?"伝説級。もう人間業じゃない。":rank==="S"?"すごい！あと少しで伝説。":rank==="A"?"かなり上手い。Sランクが見えてる。":rank==="B"?"いい調子。コンボを意識すると一気に伸びる。":rank==="C"?"まずは長さ12と5コンボを狙おう。":"金のりんごとコンボが伸びしろ。もう一回！";
+        ovNewBest.classList.toggle("show",isBest&&score>0);
+        ovFinal.innerHTML=
+          "<span>スコア <b>"+score+" 点</b></span><span>ベスト <b>"+best+" 点</b></span>"+
+          "<span>長さ <b>"+segCount+"</b></span><span>レベル <b>"+level+"</b></span>"+
+          "<span>りんご <b>"+apples+" 個</b></span><span>金のりんご <b>"+goldEaten+" 個</b></span>"+
+          "<span>最大コンボ <b>"+maxCombo+"</b></span><span>生存時間 <b>"+Math.floor(elapsedSec())+" 秒</b></span>"+
+          "<span>ミッション <b>"+Object.keys(missionDone).length+" / "+MISSIONS.length+"</b></span><span>モード <b>"+({classic:"クラシック",wrap:"ラップ",chaos:"カオス"})[modeKey]+"</b></span>";
+        ovFinal.classList.add("show");
+        startBtn.textContent="↺ もう一度挑戦";
+        overlay.classList.remove("hidden");
+      }
+
+      function useShieldWall(head){
+        // wrap through the wall once, shield consumed
+        shield=false; sShieldBreak(); vibrate(80); shakeUntil=now()+260;
+        toast("🛡️ シールドが身代わりに！壁をすり抜けた");
+        head.x=(head.x+COLS)%COLS; head.y=(head.y+ROWS)%ROWS;
+        return head;
+      }
+
+      function step(){
+        prevSnake=snake.map(function(s){return{x:s.x,y:s.y};});
+        if(nextDirs.length) dir=nextDirs.shift();
+        var head={x:snake[0].x+dir.x, y:snake[0].y+dir.y};
+
+        // walls: always wrap through to the opposite side (no game over)
+        var hitWall=head.x<0||head.x>=COLS||head.y<0||head.y>=ROWS;
+        if(hitWall){ head.x=(head.x+COLS)%COLS; head.y=(head.y+ROWS)%ROWS; hitWall=false; }
+        // obstacles
+        var oi=-1;
+        for(var i=0;i<obstacles.length;i++) if(obstacles[i].x===head.x&&obstacles[i].y===head.y){oi=i;break;}
+        if(oi>=0){
+          if(shield){ obstacles.splice(oi,1); shield=false; sShieldBreak(); toast("🛡️ シールドで岩を粉砕！"); burst(head,"#b9c4b2",16); }
+          else return gameOver();
+        }
+        // self
+        var si=-1;
+        for(var j=0;j<snake.length-1;j++) if(snake[j].x===head.x&&snake[j].y===head.y){si=j;break;}
+        if(si>=0){
+          if(shield){
+            shield=false; sShieldBreak(); vibrate(80); toast("🛡️ シールド発動！体を切り離して回避");
+            snake=snake.slice(0,si); // cut tail from collision point
+            if(snake.length<2) snake=[snake[0],{x:snake[0].x-dir.x,y:snake[0].y-dir.y}];
+          } else return gameOver();
+        }
+
+        snake.unshift(head);
+        var ate=false, t=now();
+        var fever=isFever();
+
+        if(food&&head.x===food.x&&head.y===food.y){
+          ate=true; apples++; sessionApplesTick();
+          if(lastEatAt&&t-lastEatAt<=3500) combo++; else combo=1;
+          lastEatAt=t; if(combo>maxCombo)maxCombo=combo;
+          var bonus=Math.min(20,Math.max(0,(combo-1)*2));
+          var pts=(10+bonus)*(fever?2:1);
+          score+=pts; burst(head,"#ff5d5d",16); floatText(head,"+"+pts+(combo>=2?" ×"+combo:""),fever?"#ffb020":"#ffffff");
+          sEat(); vibrate(18);
+          placeFood(); maybeSpawnGold(false);
+          if(combo===5&&!fever){ feverUntil=t+8000; toast("🔥 フィーバー突入！ 8秒間 全得点2倍"); sFever(); }
+          var newLevel=1+Math.floor(apples/5);
+          if(newLevel>level){
+            level=newLevel; toast("⬆ レベル"+level+"！ スピードアップ"); sLevel(); burst(head,"#8bf09d",10);
+            if(modeKey==="chaos") addObstacle();
+          }
+        }
+        if(gold&&head.x===gold.x&&head.y===gold.y){
+          ate=true; goldEaten++;
+          if(lastEatAt&&t-lastEatAt<=3500) combo++; else combo=1;
+          lastEatAt=t; if(combo>maxCombo)maxCombo=combo;
+          var gp=50*(fever?2:1);
+          score+=gp; burst(head,"#ffc93c",24); floatText(head,"+"+gp+" GOLD","#ffc93c");
+          sGold(); vibrate(30); gold=null;
+          if(combo===5&&!fever){ feverUntil=t+8000; toast("🔥 フィーバー突入！ 8秒間 全得点2倍"); sFever(); }
+        }
+        if(power&&head.x===power.x&&head.y===power.y){
+          ate=power.type==="star"; // star grows by 1, others don't shrink tail handling below
+          if(power.type==="star"){ var sp=100*(fever?2:1); score+=sp; burst(head,"#ffe58a",22); floatText(head,"+"+sp+" ★","#ffe58a"); }
+          if(power.type==="shield"){ shield=true; burst(head,"#7db8ff",18); floatText(head,"🛡️ GET","#a9ccff"); toast("🛡️ シールド装備！ 1回だけ死なない"); }
+          if(power.type==="slow"){ slowUntil=t+8000; burst(head,"#7fe6d8",18); floatText(head,"🐢 SLOW","#a9f0e6"); toast("🐢 8秒間スローに"); }
+          sPower(); power=null; powerNextAt=t+11000+Math.random()*6000;
+          if(power&&false){}
+        }
+        if(!ate) snake.pop();
+
+        // timers per step
+        if(gold&&t>goldExpires){ gold=null; }
+        if(power&&t>power.expires){ power=null; powerNextAt=t+6000; }
+        if(lastEatAt&&t-lastEatAt>3500&&combo>0){ combo=0; }
+        maybeSpawnPower(t);
+
+        checkMissions();
+        updateHud();
+      }
+      /* ---------- continuous movement update (replaces grid step) ---------- */
+      function distToCell(cx,cy){ return Math.hypot(hx-(cx+0.5), hy-(cy+0.5)); }
+      function hitObstacle(){
+        for(var i=0;i<obstacles.length;i++){ var o=obstacles[i];
+          var nx=Math.max(o.x,Math.min(hx,o.x+1)), ny=Math.max(o.y,Math.min(hy,o.y+1));
+          if(Math.hypot(hx-nx,hy-ny)<0.30) return i;
+        } return -1;
+      }
+      function rebuildTrailBehind(){
+        trail=[]; for(var i=0;i<120;i++){ trail.push({x:hx-Math.cos(angle)*i*0.06, y:hy-Math.sin(angle)*i*0.06}); }
+        selfGraceUntil=now()+900;
+      }
+      function triggerFever(t){ if(!isFever()){ feverUntil=t+8000; feverCount++; toast("🔥 フィーバー突入！ 8秒間 全得点2倍"); sFever(); } }
+      function onEatCommon(t){
+        if(lastEatAt&&t-lastEatAt<=3500) combo++; else combo=1;
+        lastEatAt=t; if(combo>maxCombo)maxCombo=combo;
+        if(combo===5) triggerFever(t);
+      }
+      function updateContinuous(dtMs){
+        var dt=Math.min(0.05,dtMs/1000), t=now();
+        /* steering: targetAngle is set by dragging anywhere on the game
+           screen. No keyboard steering. */
+        var diff=angDiff(targetAngle,angle), maxTurn=8.5*dt;
+        angle+=Math.max(-maxTurn,Math.min(maxTurn,diff));
+        dir={x:Math.cos(angle),y:Math.sin(angle)};
+        var sp=speedCells();
+        hx+=Math.cos(angle)*sp*dt; hy+=Math.sin(angle)*sp*dt;
+        /* walls: always wrap through to the opposite side (no game over, shield not consumed) */
+        if(hx<0.3||hx>COLS-0.3||hy<0.3||hy>ROWS-0.3){
+          hx=(hx+COLS)%COLS; hy=(hy+ROWS)%ROWS; rebuildTrailBehind();
+        } else {
+          /* record trail */
+          var last=trail[0];
+          if(!last||Math.hypot(hx-last.x,hy-last.y)>0.045){ trail.unshift({x:hx,y:hy}); }
+          else if(last){ last.x=hx; last.y=hy; }
+          var maxPts=420+segCount*40; if(trail.length>maxPts) trail.length=maxPts;
+        }
+        syncSnakeFromTrail();
+        /* obstacles */
+        var oi=hitObstacle();
+        if(oi>=0){
+          if(shield){ var oc=obstacles[oi]; obstacles.splice(oi,1); shield=false; sShieldBreak(); toast("🛡️ シールドで岩を粉砕！"); burst(oc,"#b9c4b2",16); selfGraceUntil=t+600; }
+          else return gameOver();
+        }
+        /* self collision */
+        if(t>selfGraceUntil && segCount>=8){
+          var body=resampleBody();
+          for(var si=6;si<body.length;si++){ if(Math.hypot(hx-body[si].x,hy-body[si].y)<0.46){
+            if(shield){ shield=false; sShieldBreak(); vibrate(80); toast("🛡️ シールド発動！体を短くして回避"); segCount=Math.max(3,segCount-4); rebuildTrailBehind(); }
+            else return gameOver();
+            break;
+          }}
+        }
+        var fever=isFever();
+        /* food */
+        if(food&&distToCell(food.x,food.y)<0.72){
+          var fc=food; apples++; segCount++; sessionApplesTick(); onEatCommon(t);
+          var bonus=Math.min(20,Math.max(0,(combo-1)*2)), pts=(10+bonus)*(fever?2:1);
+          score+=pts; burst(fc,"#ff5d5d",16); floatText(fc,"+"+pts+(combo>=2?" ×"+combo:""),fever?"#ffb020":"#ffffff");
+          sEat(); vibrate(18); placeFood(); maybeSpawnGold(false);
+          var nl=1+Math.floor(apples/5);
+          if(nl>level){ level=nl; toast("⬆ レベル"+level+"！ スピードアップ"); sLevel(); if(modeKey==="chaos") addObstacle(); }
+          checkMissions(); updateHud();
+          if(apples>=STAGES[currentStage].target){ stageClear(); return; }
+        }
+        if(gold&&distToCell(gold.x,gold.y)<0.72){
+          var gc=gold; goldEaten++; segCount++; onEatCommon(t);
+          var gp=50*(fever?2:1); score+=gp; burst(gc,"#ffc93c",24); floatText(gc,"+"+gp+" GOLD","#ffc93c"); sGold(); vibrate(30); gold=null;
+        }
+        if(power&&distToCell(power.x,power.y)<0.72){
+          var pc=power;
+          if(pc.type==="star"){ starEaten++; segCount++; var spp=100*(fever?2:1); score+=spp; burst(pc,"#ffe58a",22); floatText(pc,"+"+spp+" ★","#ffe58a"); }
+          if(pc.type==="shield"){ shieldGot++; shield=true; burst(pc,"#7db8ff",18); floatText(pc,"🛡️ GET","#a9ccff"); toast("🛡️ シールド装備！ 1回だけ死なない"); }
+          if(pc.type==="slow"){ slowGot++; slowUntil=t+8000; burst(pc,"#7fe6d8",18); floatText(pc,"🐢 SLOW","#a9f0e6"); toast("🐢 8秒間スローに"); }
+          sPower(); power=null; powerNextAt=t+11000+Math.random()*6000;
+        }
+        if(gold&&t>goldExpires) gold=null;
+        if(power&&t>power.expires){ power=null; powerNextAt=t+6000; }
+        if(lastEatAt&&t-lastEatAt>3500&&combo>0) combo=0;
+        maybeSpawnPower(t);
+        checkMissions();
+      }
+      function sessionApplesTick(){ /* live unlock check without ending run */ 
+        // count session total as base + current run apples is handled at game over; live check:
+        var liveTotal=sessionApples+apples;
+        document.querySelectorAll(".skin-chip").forEach(function(chip){
+          var k=chip.getAttribute("data-skin");
+          if(chip.disabled && liveTotal>=SKIN_UNLOCK[k]){ chip.disabled=false; chip.innerHTML=chip.innerHTML.replace(/ 🔒\d+個/,""); toast("🎨 新スキン解放！"); sPower(); }
+        });
+      }
+
+      /* ---------- drawing ---------- */
+      function lerpPos(a,b,t){
+        if(!a) return {x:b.x,y:b.y};
+        var dx=b.x-a.x, dy=b.y-a.y;
+        if(Math.abs(dx)>1||Math.abs(dy)>1) return {x:b.x,y:b.y}; // wrap/teleport: snap
+        return {x:a.x+dx*t, y:a.y+dy*t};
+      }
+      function draw(timestamp){
+        var W=canvas.width,H=canvas.height;
+        var cell=Math.min(W,H)/COLS, cw=cell, ch=cell;
+        var ox=(W-cell*COLS)/2, oy=(H-cell*ROWS)/2;
+        VIEW.cell=cell; VIEW.ox=ox; VIEW.oy=oy;
+        var skin=SKINS[skinKey];
+        // bg checker — extended beyond the square field to the edges of the
+        // canvas, so in fullscreen the checkerboard covers the whole screen
+        var gx0=Math.floor(-ox/cell), gx1=Math.ceil((W-ox)/cell);
+        var gy0=Math.floor(-oy/cell), gy1=Math.ceil((H-oy)/cell);
+        for(var gx=gx0;gx<gx1;gx++)for(var gy=gy0;gy<gy1;gy++){
+          ctx.fillStyle=(((gx+gy)%2)+2)%2===0?colorCache.a:colorCache.b;
+          ctx.fillRect(ox+gx*cw,oy+gy*ch,cw,ch);
+        }
+        if(isFever()){
+          ctx.fillStyle="rgba(255,110,30,0.06)"; ctx.fillRect(0,0,W,H);
+        }
+        var shX=0,shY=0;
+        if(timestamp<shakeUntil){ shX=(Math.random()-0.5)*7; shY=(Math.random()-0.5)*7; }
+        ctx.save(); ctx.translate(ox+shX,oy+shY);
+
+        // obstacles
+        obstacles.forEach(function(o){
+          var ox=o.x*cw,oy=o.y*ch;
+          ctx.fillStyle="#5b6a5c"; roundRect(ox+3,oy+3,cw-6,ch-6,7); ctx.fill();
+          ctx.fillStyle="#7b8b7d"; roundRect(ox+6,oy+5,cw-14,ch-16,5); ctx.fill();
+          ctx.fillStyle="rgba(0,0,0,.25)"; roundRect(ox+5,oy+ch-11,cw-10,5,2); ctx.fill();
+        });
+
+        function apple(cell,color,isGold){
+          var cx=(cell.x+0.5)*cw, cy=(cell.y+0.5)*ch;
+          var pulse=1+Math.sin(timestamp/220+cell.x)*0.08;
+          var r=Math.min(cw,ch)*0.34*pulse;
+          if(isGold){
+            var remain=Math.max(0,(goldExpires-timestamp)/7000);
+            ctx.strokeStyle="rgba(255,201,60,.9)"; ctx.lineWidth=3;
+            ctx.beginPath(); ctx.arc(cx,cy,r+6,-Math.PI/2,-Math.PI/2+Math.PI*2*remain); ctx.stroke();
+            if(Math.floor(timestamp/160)%2===0){ ctx.fillStyle="rgba(255,230,140,.95)"; star(cx+r+7,cy-r-4,3.4); }
+          }
+          ctx.save();
+          ctx.shadowColor=color; ctx.shadowBlur=isGold?16:9;
+          ctx.fillStyle=color; ctx.beginPath(); ctx.arc(cx,cy+r*0.08,r,0,Math.PI*2); ctx.fill();
+          ctx.restore();
+          ctx.fillStyle="rgba(255,255,255,.6)"; ctx.beginPath(); ctx.arc(cx-r*0.35,cy-r*0.3,r*0.27,0,Math.PI*2); ctx.fill();
+          ctx.strokeStyle="#6b4f2a"; ctx.lineWidth=3; ctx.beginPath();
+          ctx.moveTo(cx,cy-r*0.72); ctx.quadraticCurveTo(cx+2,cy-r*1.1,cx+r*0.42,cy-r*1.16); ctx.stroke();
+          ctx.fillStyle="#3fae5a"; ctx.beginPath(); ctx.ellipse(cx+r*0.3,cy-r*0.98,r*0.3,r*0.16,-0.5,0,Math.PI*2); ctx.fill();
+        }
+        if(food) apple(food,colorCache.food,false);
+        if(gold && !(goldExpires-timestamp<1200 && Math.floor(timestamp/120)%2===0)) apple(gold,"#f5b921",true);
+
+        // power item
+        if(power){
+          var pcx=(power.x+0.5)*cw, pcy=(power.y+0.5)*ch;
+          var bob=Math.sin(timestamp/260)*2.5;
+          var emoji= power.type==="star"?"⭐":power.type==="shield"?"🛡️":"🐢";
+          var ringC= power.type==="star"?"#ffe58a":power.type==="shield"?"#7db8ff":"#7fe6d8";
+          ctx.strokeStyle=ringC; ctx.lineWidth=2.5;
+          ctx.beginPath(); ctx.arc(pcx,pcy+bob,cw*0.44,0,Math.PI*2); ctx.stroke();
+          ctx.font=Math.floor(cw*0.62)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+          ctx.fillText(emoji,pcx,pcy+bob+1);
+        }
+
+        // snake: continuous trail, drawn tail -> head with curve smoothing (any angle, incl. diagonal)
+        if(trail&&trail.length){
+          var bodyNow=resampleBody();
+          var pts=[];
+          for(var i2=bodyNow.length-1;i2>=0;i2--){ pts.push({x:bodyNow[i2].x*cw,y:bodyNow[i2].y*ch,seg:i2}); }
+          ctx.save();
+          ctx.lineCap="round"; ctx.lineJoin="round";
+          ctx.shadowColor=skin.body; ctx.shadowBlur=isFever()?20:8;
+          ctx.strokeStyle=skin.body; ctx.lineWidth=cw*0.74;
+          ctx.beginPath();
+          if(pts.length===1){ ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[0].x+0.1,pts[0].y); }
+          else if(pts.length===2){ ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); }
+          else{
+            ctx.moveTo(pts[0].x,pts[0].y);
+            for(var pi=1;pi<pts.length-1;pi++){ var mx=(pts[pi].x+pts[pi+1].x)/2, my=(pts[pi].y+pts[pi+1].y)/2; ctx.quadraticCurveTo(pts[pi].x,pts[pi].y,mx,my); }
+            ctx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+          }
+          ctx.stroke();
+          ctx.shadowBlur=0;
+          // belly dots / pattern
+          ctx.fillStyle=skin.belly; ctx.globalAlpha=0.5;
+          for(var d=2;d<pts.length;d+=2){ ctx.beginPath(); ctx.arc(pts[d].x,pts[d].y,cw*0.11,0,Math.PI*2); ctx.fill(); }
+          ctx.globalAlpha=1;
+          // tail taper
+          var tail=pts[0];
+          ctx.fillStyle=skin.dark; ctx.beginPath(); ctx.arc(tail.x,tail.y,cw*0.2,0,Math.PI*2); ctx.fill();
+          // head
+          var hp=pts[pts.length-1];
+          ctx.fillStyle=skin.head; ctx.beginPath(); ctx.arc(hp.x,hp.y,cw*0.46,0,Math.PI*2); ctx.fill();
+          if(shield){ ctx.strokeStyle="#7db8ff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(hp.x,hp.y,cw*0.56,0,Math.PI*2); ctx.stroke(); }
+          // tongue (flicks)
+          if(Math.floor(timestamp/500)%3!==0){
+            ctx.strokeStyle="#ff5d7a"; ctx.lineWidth=2.5; ctx.beginPath();
+            var tx=hp.x+dir.x*cw*0.46, ty=hp.y+dir.y*cw*0.46;
+            ctx.moveTo(tx,ty); ctx.lineTo(tx+dir.x*cw*0.3,ty+dir.y*cw*0.3);
+            ctx.stroke();
+          }
+          // eyes (perpendicular to heading, works at any angle incl. diagonal)
+          var off=cw*0.17, fwd=cw*0.13, perpX=-dir.y, perpY=dir.x;
+          var ex1=hp.x+dir.x*fwd+perpX*off, ey1=hp.y+dir.y*fwd+perpY*off;
+          var ex2=hp.x+dir.x*fwd-perpX*off, ey2=hp.y+dir.y*fwd-perpY*off;
+          [[ex1,ey1],[ex2,ey2]].forEach(function(e){
+            ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(e[0],e[1],cw*0.13,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle="#12240f"; ctx.beginPath(); ctx.arc(e[0]+dir.x*2,e[1]+dir.y*2,cw*0.065,0,Math.PI*2); ctx.fill();
+          });
+          ctx.restore();
+        }
+
+        // particles
+        particles=particles.filter(function(p){return p.life>0;});
+        particles.forEach(function(p){
+          p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=p.decay;
+          ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=p.color;
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        });
+        ctx.globalAlpha=1;
+        // floats
+        floats=floats.filter(function(f){return f.life>0;});
+        ctx.textAlign="center"; ctx.textBaseline="middle";
+        floats.forEach(function(f){
+          f.y-=0.022; f.life-=0.018;
+          ctx.globalAlpha=Math.max(0,f.life);
+          ctx.font="800 "+Math.floor(cw*0.58)+"px sans-serif";
+          ctx.lineWidth=4; ctx.strokeStyle="rgba(0,0,0,.55)";
+          var fx=(f.x+0.5)*cw, fy=(f.y+0.5)*ch;
+          ctx.strokeText(f.text,fx,fy); ctx.fillStyle=f.color; ctx.fillText(f.text,fx,fy);
+        });
+        ctx.globalAlpha=1;
+        ctx.restore();
+      }
+      function star(cx,cy,r){
+        ctx.beginPath();
+        for(var i=0;i<10;i++){
+          var rad=i%2===0?r:r*0.45, a=-Math.PI/2+i*Math.PI/5;
+          var px=cx+Math.cos(a)*rad, py=cy+Math.sin(a)*rad;
+          if(i===0)ctx.moveTo(px,py); else ctx.lineTo(px,py);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      function roundRect(x,y,w,h,r){
+        ctx.beginPath();
+        ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+        ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+      }
+
+      /* ---------- main loop ---------- */
+      function loop(ts){
+        rafId=requestAnimationFrame(loop);
+        var dt=lastFrameTs?ts-lastFrameTs:16; lastFrameTs=ts;
+        if(state==="playing"){
+          lastStep=ts;
+          updateContinuous(dt);
+          if(combo>0&&lastEatAt&&ts-lastEatAt>3500){ /* handled in update */ }
+          if(slowUntil&&performance.now()>slowUntil&&slowUntil!==0){ slowUntil=0; updateHud(); }
+          if(feverUntil&&performance.now()>feverUntil){ feverUntil=0; updateHud(); }
+        }
+        draw(ts);
+      }
+
+      /* ---------- flow ---------- */
+      function startGame(){
+        ac();
+        enterFullscreen();
+        resetGame();
+        nextStageBtn.classList.add("hidden");
+        state="playing";
+        runStart=now(); lastStep=0; elapsedBefore=0;
+        overlay.classList.add("hidden");
+        ovRank.style.display="none"; ovFinal.classList.remove("show"); ovNewBest.classList.remove("show");
+        pauseBtn.textContent="⏸ 一時停止";
+        updateHud(); renderMissions();
+        toast("ステージ"+(currentStage+1)+"開始！ 画面をなぞって操作しよう");
+      }
+      function togglePause(){
+        if(state==="playing"){
+          state="paused"; pausedAt=now();
+          pauseBtn.textContent="▶ 再開";
+          ovRank.style.display="none"; ovFinal.classList.remove("show"); ovNewBest.classList.remove("show");
+          ovTitle.textContent="一時停止中";
+          ovMsg.textContent="スコア "+score+" 点 ／ 長さ "+segCount+" ／ Lv"+level+"。再開ボタンか Space で続けられます。";
+          exitFsBtn.classList.remove("hidden");
+          startBtn.textContent="▶ 再開";
+          overlay.classList.remove("hidden");
+        }else if(state==="paused"){
+          state="playing";
+          elapsedBefore+=now()-pausedAt; pausedAt=0; lastStep=0;
+          overlay.classList.add("hidden");
+          pauseBtn.textContent="⏸ 一時停止";
+        }
+      }
+      function togglePauseOrStart(){
+        if(state==="playing"||state==="paused") togglePause(); else startGame();
+      }
+
+      function keyName(k){
+        if(k==="ArrowUp"||k==="w"||k==="W")return "up";
+        if(k==="ArrowDown"||k==="s"||k==="S")return "down";
+        if(k==="ArrowLeft"||k==="a"||k==="A")return "left";
+        if(k==="ArrowRight"||k==="d"||k==="D")return "right";
+        return null;
+      }
+      document.addEventListener("keydown",function(e){
+        var k=e.key, kn=keyName(k), handled=true;
+        if(kn){ /* direction keys are swallowed (no page scroll) but do NOT steer: drag on screen only */ }
+        else if(k===" "){ togglePauseOrStart(); }
+        else if(k==="Enter"){ if(state==="over"||state==="idle"||state==="clear") startGame(); else if(state==="paused") togglePause(); }
+        else if(k==="Escape"){ exitFullscreen(); }
+        else handled=false;
+        if(handled) e.preventDefault();
+      });
+      document.addEventListener("keyup",function(e){ var kn=keyName(e.key); if(kn) keysDown[kn]=false; });
+
+      startBtn.addEventListener("click",function(){ if(state==="paused") togglePause(); else startGame(); });
+      nextStageBtn.addEventListener("click",function(){ if(currentStage+1<STAGES.length){ currentStage++; renderStages(); } startGame(); });
+      exitFsBtn.addEventListener("click",function(){ exitFullscreen(); });
+      fsBtn.addEventListener("click",function(){ if(gameShell.classList.contains("fs-on")) exitFullscreen(); else enterFullscreen(); });
+      /* If native fullscreen is exited (Esc etc.), the .fs-on layout stays in
+         place so the game never falls back to a half-page view mid-play. */
+      /* block page scroll while playing (swipes were scrolling the page) */
+      document.addEventListener("touchmove",function(e){ if(state==="playing") e.preventDefault(); },{passive:false});
+      pauseBtn.addEventListener("click",function(){ if(state==="playing"||state==="paused") togglePause(); });
+      resetBtn.addEventListener("click",startGame);
+      soundBtn.addEventListener("click",function(){
+        soundOn=!soundOn;
+        soundBtn.textContent=soundOn?"🔊 音 ON":"🔇 音 OFF";
+        soundBtn.setAttribute("aria-pressed",soundOn?"true":"false");
+        if(soundOn) sEat();
+      });
+
+      document.querySelectorAll(".mode-chip").forEach(function(chip){
+        chip.addEventListener("click",function(){
+          modeKey=chip.getAttribute("data-mode");
+          document.querySelectorAll(".mode-chip").forEach(function(c){c.setAttribute("aria-pressed",c===chip?"true":"false");});
+          modeDesc.textContent=MODES[modeKey];
+          if(state==="idle"||state==="over") resetGame();
+        });
+      });
+      document.querySelectorAll(".speed-chip").forEach(function(chip){
+        chip.addEventListener("click",function(){
+          speedKey=chip.getAttribute("data-speed");
+          document.querySelectorAll(".speed-chip").forEach(function(c){c.setAttribute("aria-pressed",c===chip?"true":"false");});
+        });
+      });
+      document.querySelectorAll(".skin-chip").forEach(function(chip){
+        chip.addEventListener("click",function(){
+          if(chip.disabled) return;
+          skinKey=chip.getAttribute("data-skin");
+          document.querySelectorAll(".skin-chip").forEach(function(c){c.setAttribute("aria-pressed",c===chip?"true":"false");});
+        });
+      });
+
+      /* ---- anywhere-on-screen steering ----
+         Drag anywhere on the game screen: the snake turns in the drag
+         direction (vector from the touch-start point to the current finger
+         position), so any spot on screen works and diagonal/curved steering
+         stays smooth. Release and the snake keeps its heading. Pointer
+         events, so mouse drags work too. */
+      var dragId=null, dragAnchor=null;
+      canvas.addEventListener("pointerdown",function(e){
+        ac();
+        if(state!=="playing") return;
+        dragId=e.pointerId; dragAnchor={x:e.clientX,y:e.clientY};
+        try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+        e.preventDefault();
+      });
+      canvas.addEventListener("pointermove",function(e){
+        if(dragId!==e.pointerId||!dragAnchor) return;
+        var dx=e.clientX-dragAnchor.x, dy=e.clientY-dragAnchor.y;
+        if(Math.hypot(dx,dy)>10) targetAngle=Math.atan2(dy,dx);
+        e.preventDefault();
+      });
+      function dragEnd(e){
+        if(dragId!==e.pointerId) return;
+        dragId=null; dragAnchor=null; /* release: snake keeps its heading */
+      }
+      canvas.addEventListener("pointerup",dragEnd);
+      canvas.addEventListener("pointercancel",dragEnd);
+
+      window.addEventListener("resize",fitBoard);
+      window.addEventListener("orientationchange",function(){ setTimeout(fitBoard,120); });
+      if(window.visualViewport) window.visualViewport.addEventListener("resize",fitBoard);
+      document.addEventListener("fullscreenchange",function(){ setTimeout(fitBoard,80); });
+
+      if(window.matchMedia){
+        var mq=window.matchMedia("(prefers-color-scheme: dark)");
+        if(mq.addEventListener) mq.addEventListener("change",function(){ refreshColors(); draw(now()); });
+      }
+
+      refreshColors();
+      resetGame();
+      renderStages();
+      state="idle";
+      rafId=requestAnimationFrame(loop);
+    })();
+    </script>
+  </body>
+</html>
