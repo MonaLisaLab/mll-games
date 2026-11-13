@@ -146,14 +146,28 @@
       .gold-txt{color:var(--gold);font-weight:700}
       .shake{animation:shake .32s ease}
       @keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-4px,-2px)}80%{transform:translate(4px,2px)}}
-      @media(prefers-reduced-motion:reduce){.shake{animation:none}.fever-fill{transition:none}}
+      /* Sakurai: next reward always in view */
+      .next-reward{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:.72rem;font-weight:700;color:var(--ink-dim);margin:0 2px 8px;line-height:1.5}
+      .next-reward .pill{background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 9px;box-shadow:var(--shadow-sm)}
+      .next-reward .pill b{color:var(--gold);font-variant-numeric:tabular-nums}
+      .next-reward .pill.skin b{color:var(--accent-dark)}
+      #gameShell.fs-on .next-reward{position:relative;z-index:5;margin:0 10px 6px;flex:none;color:rgba(255,255,255,.85)}
+      #gameShell.fs-on .next-reward .pill{background:rgba(8,18,10,.55);border-color:rgba(255,255,255,.18);color:#fff;box-shadow:none;backdrop-filter:blur(3px)}
+      /* first-play hint only (tutorial in the game itself, not long text) */
+      .play-hint{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);z-index:3;background:rgba(8,18,10,.72);color:#fff;font-weight:800;font-size:.92rem;padding:9px 16px;border-radius:99px;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;animation:hintNudge 1.1s ease-in-out infinite}
+      .play-hint.show{opacity:1}
+      @keyframes hintNudge{0%,100%{transform:translateX(-50%)}50%{transform:translateX(calc(-50% + 14px))}}
+      /* Sakurai: retry must be fast — the retry button is the biggest thing on the game-over screen */
+      .btn.big-retry{font-size:1.22rem;padding:16px 38px;min-height:3.7rem;border-radius:999px;box-shadow:0 10px 26px rgba(20,114,50,.45)}
+      .overlay .meters{font-size:.82rem;color:#ffe9a8;font-weight:700}
+      @media(prefers-reduced-motion:reduce){.shake{animation:none}.fever-fill{transition:none}.play-hint{animation:none}}
     </style>
   </head>
   <body>
     <div class="wrap">
       <header>
         <div class="title-row"><h1>🐍 スネークゲーム <span class="dx">DELUXE</span></h1></div>
-        <p class="sub">ただのスネークじゃない。<b>コンボで稼ぎ、フィーバーで爆走し、ミッションを制覇する。</b><br>りんごを連続で食べるほど倍率アップ。金のりんご・アイテム・障害物が毎回展開を変えます。</p>
+        <p class="sub"><b>画面をなぞって、りんごを食べる。</b>それだけ。コンボとフィーバーは遊びながら覚えられます。</p>
       </header>
 
       <div id="gameShell">
@@ -166,6 +180,7 @@
       </div>
       <div class="fever-label"><span>🔥 フィーバーゲージ（コンボ5で発動）</span><span id="feverState">あと <b id="feverNeed">5</b> コンボ</span></div>
       <div class="fever-bar"><div class="fever-fill" id="feverFill"></div></div>
+      <div class="next-reward" id="nextReward" aria-label="次のご褒美まで"><span class="pill">🎁 次のご褒美まで <b>—</b></span></div>
 
       <div class="board-wrap" id="boardWrap">
         <canvas id="board" width="640" height="640" aria-label="スネークゲームの盤面"></canvas>
@@ -174,11 +189,13 @@
           <span class="badge" id="slowBadge">🐢 スロー中</span>
         </div>
         <div class="toast" id="toast" role="status"></div>
+        <div class="play-hint" id="playHint">👆 画面をなぞって操作</div>
         <div class="overlay" id="overlay">
           <p class="rank hidden" id="ovRank"></p>
           <p class="big" id="ovTitle">スネークゲーム DX</p>
           <span class="newbest" id="ovNewBest">★ ベスト更新！</span>
-          <p class="msg" id="ovMsg">スタートで端末の画面いっぱいがゲーム画面に。操作は<b style="color:#fff">画面のどこをなぞってもOK</b>：なぞった方向にヘビが斜めにもヌルヌル進みます。指を離すとそのまま直進します。<br>素早く食べ続けると<b style="color:#ffb020">コンボ</b>が伸びて得点倍増、5連続で<b style="color:#ff7a2e">フィーバー（全得点2倍）</b>！</p>
+          <p class="msg" id="ovMsg">👆 画面をなぞって操作。りんごを食べよう。</p>
+          <p class="meters hidden" id="ovMeters"></p>
           <div class="final" id="ovFinal"></div>
           <div class="overlay-btns">
             <button class="btn" id="startBtn" type="button">▶ スタート</button>
@@ -231,7 +248,7 @@
       </section>
 
       <section class="group" aria-label="ミッション">
-        <h2>ミッション（全18） <span>達成ごとに +30点ボーナス</span></h2>
+        <h2>ミッション（全20） <span>達成ごとに +30点ボーナス</span></h2>
         <ul class="missions" id="missions"></ul>
         <p class="session-line" id="sessionLine">このセッション： 0 ゲーム ／ 累計りんご 0 個</p>
       </section>
@@ -247,7 +264,11 @@
           <li><b>ステージ：</b>全10ステージ。目標のりんごを食べるとクリアで、次のステージが解放されます。全画面で遊ぶのでスワイプで画面がスクロールしません</li>
           <li><b>なめらか移動：</b>ステージ自体はブロック状の壁でも、ヘビ本体は座標を連続計算する別レイヤーで動くので、ブロックに縛られず自由な角度で移動できます</li>
           <li><b>レベル：</b>りんご5個ごとにLvアップして加速。カオスではLvごとに障害物が増えます</li>
-          <li><b>ランク：</b>ゲームオーバー時のスコアで C→B→A→S→SS 評価。SSは800点〜</li>
+          <li><b>ランク：</b>ゲームオーバー時のスコアで C→B→A→S→SS 評価。SSは800点〜。全長はメートル換算でも表示されます</li>
+          <li><b>手応え（桜井式）：</b>食べた瞬間に一瞬止まるヒットストップ＋衝撃波＋画面の揺れで手応えを作っています。コンボが伸びるほど食べる音の音程も上がります</li>
+          <li><b>リスクとリターン：</b>金のりんごは岩や自分の体の近く＝危ない場所に出やすい。危ないほど大きなご褒美、がこのゲームの駆け引きです。りんごの取得判定は見た目より少し広めです</li>
+          <li><b>次のご褒美：</b>プレイ中は常に「次のミッション／スキン解放まであと○」が盤面の上に表示されます</li>
+          <li><b>難易度：</b>ステージは一直線に難しくならず、難所と平地（息抜き）が交互に来ます。序盤の速度も控えめです</li>
         </ul>
       </section>
     </div>
@@ -277,7 +298,9 @@
           stageGoalEl=document.getElementById("stageGoal"), stageProgEl=document.getElementById("stageProg"),
           stageHint=document.getElementById("stageHint"),
           nextStageBtn=document.getElementById("nextStageBtn"), exitFsBtn=document.getElementById("exitFsBtn"),
-          fsBtn=document.getElementById("fsBtn");
+          fsBtn=document.getElementById("fsBtn"),
+          nextRewardEl=document.getElementById("nextReward"), playHintEl=document.getElementById("playHint"),
+          ovMeters=document.getElementById("ovMeters");
 
       var SPEEDS={slow:165,normal:118,fast:82,insane:62};
       var MODES={
@@ -308,12 +331,32 @@
       /* ---- free (continuous) movement state: NOT grid-locked ---- */
       var hx=9.5, hy=10.5, angle=0, targetAngle=0, segCount=3, trail=[];
       var pointerTarget=null, pointerDown=false, keysDown={}, selfGraceUntil=0, lastFrameTs=0;
-      var FREE_SPEEDS={slow:5.0,normal:7.2,fast:10.2,insane:13.2};
+      /* Sakurai: opening speed is deliberately lowered ("easier than you think").
+         Stage tempo then alternates hard / relief instead of a straight ramp —
+         see STAGES[].sp per stage. */
+      var FREE_SPEEDS={slow:4.4,normal:6.2,fast:9.4,insane:12.6};
+      /* ---- Sakurai feel state: hit-stop / flash / scaled shake / hit marks / confetti ---- */
+      var hitstopUntil=0, flashUntil=0, flashDur=1, flashColor="255,255,255", flashMax=0.35;
+      var shakeMag=0, shakeStart=0, shakeDur=0, hitRings=[], confetti=[], hintShown=false;
+      function triggerHitstop(ms){ var until=now()+ms; if(until>hitstopUntil) hitstopUntil=until; }
+      function triggerFlash(r,g,b,ms,alpha){ flashColor=r+","+g+","+b; flashDur=ms; flashMax=alpha; flashUntil=now()+ms; }
+      function triggerShake(mag,ms){ shakeMag=mag; shakeDur=ms; shakeStart=now(); }
+      function spawnHitMark(cell,color,big){
+        /* multiple elements, from the exact overlap point, gone fast, never burying the snake */
+        hitRings.push({x:cell.x+0.5,y:cell.y+0.5,r:0.12,vr:big?3.4:2.4,life:1,decay:big?0.09:0.12,color:color,dark:true});
+        hitRings.push({x:cell.x+0.5,y:cell.y+0.5,r:0.05,vr:big?2.0:1.4,life:0.8,decay:0.14,color:"#20291e",dark:false});
+        burst(cell,color,big?22:14); burst(cell,"#2a3328",big?8:5);
+      }
+      function spawnConfetti(){
+        var cols=["#ff5d5d","#ffc93c","#4fc96f","#5aa6ff","#ff8ac2","#ffffff"];
+        for(var i=0;i<90;i++){ confetti.push({x:Math.random()*COLS,y:-Math.random()*4-0.5,vx:(Math.random()-0.5)*1.6,vy:1.2+Math.random()*2.6,w:0.16+Math.random()*0.2,h:0.1+Math.random()*0.14,rot:Math.random()*6.28,vr:(Math.random()-0.5)*0.3,life:1,decay:0.004+Math.random()*0.004,color:cols[i%cols.length]}); }
+      }
+      function lengthMeters(){ return (segCount*0.35).toFixed(1); }
       /* view transform: in fullscreen the canvas backing covers the whole
          viewport; the square field is centered and the checkerboard pattern
          is extended over the margins so the entire screen is the game board */
       var VIEW={cell:32,ox:0,oy:0};
-      function speedCells(){ var s=FREE_SPEEDS[speedKey]*(1+(level-1)*0.045+Math.max(0,segCount-3)*0.006); if(now()<slowUntil)s*=0.6; if(now()<feverUntil)s*=1.08; return s; }
+      function speedCells(){ var st=STAGES[currentStage]; var spm=st?st.sp:1; var s=FREE_SPEEDS[speedKey]*spm*(1+(level-1)*0.038+Math.max(0,segCount-3)*0.005); if(now()<slowUntil)s*=0.6; if(now()<feverUntil)s*=1.08; return s; }
       function angDiff(a,b){ var d=(a-b)%(Math.PI*2); if(d>Math.PI)d-=Math.PI*2; if(d<-Math.PI)d+=Math.PI*2; return d; }
       function resetTrail(){ hx=9.5; hy=10.5; angle=0; targetAngle=0; trail=[]; for(var i=0;i<90;i++){ trail.push({x:hx-i*0.06,y:hy}); } pointerTarget=null; pointerDown=false; selfGraceUntil=now()+1200; syncSnakeFromTrail(); }
       function resampleBody(){
@@ -338,17 +381,19 @@
       }
       function syncSnakeFromTrail(){ if(trail.length) snake=resampleBody(); }
 
+      /* Difficulty is NOT a straight ramp (Sakurai): hard stages and relief
+         stages alternate — sp is the per-stage speed multiplier, tempo names it. */
       var STAGES=[
-        {name:"草原", target:5, desc:"障害物なし。まずは基本操作でりんご5個。"},
-        {name:"四隅の岩", target:7, desc:"四隅に岩ブロック。中央を広く使おう。りんご7個でクリア。"},
-        {name:"二本の壁", target:8, desc:"上下に横壁、真ん中に抜け道あり。りんご8個でクリア。"},
-        {name:"十字路", target:10, desc:"十字の壁が交差。行き止まりに注意。りんご10個でクリア。"},
-        {name:"ジグザグ回廊", target:10, desc:"互い違いの縦壁を縫って進む。りんご10個でクリア。"},
-        {name:"外周の回廊", target:12, desc:"外周に沿った枠と開口部。大きく回るルートが安全。りんご12個でクリア。"},
-        {name:"迷宮の入口", target:12, desc:"短い壁が迷路状に並ぶ。先読みが大事。りんご12個でクリア。"},
-        {name:"柱の森", target:14, desc:"柱が点在。体の長さ管理が勝負。りんご14個でクリア。"},
-        {name:"渦巻き", target:15, desc:"渦巻き状の壁。内側に入るタイミングを見極めよう。りんご15個でクリア。"},
-        {name:"王の迷宮", target:18, desc:"最終ステージ。壁・柱・回廊の複合迷宮。りんご18個で完全クリア！"}
+        {name:"草原", target:5, sp:0.82, tempo:"平地・ゆったり", desc:"障害物なし、速度も控えめ。まずは基本操作でりんご5個。"},
+        {name:"四隅の岩", target:7, sp:1.0, tempo:"難所", desc:"四隅に岩ブロック。中央を広く使おう。りんご7個でクリア。"},
+        {name:"二本の壁", target:8, sp:0.85, tempo:"平地・息抜き", desc:"上下に横壁、真ん中に抜け道あり。速くないので落ち着いて。りんご8個でクリア。"},
+        {name:"十字路", target:10, sp:1.06, tempo:"難所", desc:"十字の壁が交差し速度も上がる。行き止まりに注意。りんご10個でクリア。"},
+        {name:"ジグザグ回廊", target:10, sp:0.88, tempo:"平地・息抜き", desc:"互い違いの縦壁を縫って進む。速度は控えめ。りんご10個でクリア。"},
+        {name:"外周の回廊", target:12, sp:1.02, tempo:"難所", desc:"外周に沿った枠と開口部。大きく回るルートが安全。りんご12個でクリア。"},
+        {name:"迷宮の入口", target:12, sp:0.9, tempo:"平地・息抜き", desc:"短い壁が迷路状に並ぶが、速度は控えめ。先読みで解こう。りんご12個でクリア。"},
+        {name:"柱の森", target:14, sp:1.08, tempo:"難所", desc:"柱が点在し速度も速い。体の長さ管理が勝負。りんご14個でクリア。"},
+        {name:"渦巻き", target:15, sp:0.92, tempo:"平地・じっくり", desc:"渦巻き状の壁。速くないぶん、内側に入るタイミングを見極めよう。りんご15個でクリア。"},
+        {name:"王の迷宮", target:18, sp:1.05, tempo:"最終難所", desc:"最終ステージ。壁・柱・回廊の複合迷宮。りんご18個で完全クリア！"}
       ];
       function stageObstacles(idx){
         var obs=[], seen={};
@@ -433,7 +478,8 @@
         g.gain.setValueAtTime(vol||0.06,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
         o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
       }
-      var sEat=function(){tone(540,880,.09,"square",.05);};
+      /* attack-strong, short reverb; pitch climbs with the combo (Sakurai: sound priority + feel) */
+      var sEat=function(){ var c=Math.min(combo||1,12); var f=520+c*45; tone(f,f*1.55,.08,"square",.07); tone(f*1.5,f*1.8,.05,"square",.04,.02); };
       var sGold=function(){tone(880,880,.08,"square",.06);tone(1180,1180,.09,"square",.06,.07);tone(1560,1560,.14,"square",.06,.15);};
       var sPower=function(){tone(420,980,.16,"triangle",.09);};
       var sLevel=function(){tone(660,660,.07,"square",.06);tone(990,990,.12,"square",.06,.07);};
@@ -464,11 +510,29 @@
         return free[Math.floor(Math.random()*free.length)];
       }
       function placeFood(){ food=randomEmptyCell(); }
+      /* Sakurai risk & return, placed close together: the timed gold apple
+         spawns preferentially NEXT TO danger — beside rocks or the snake's
+         own body — so the big reward is worth a risky dive. */
+      function dangerCell(){
+        var occ={};
+        (snake||[]).forEach(function(s){occ[key(Math.floor(s.x),Math.floor(s.y))]=true;});
+        obstacles.forEach(function(o){occ[key(o.x,o.y)]=true;});
+        if(food)occ[key(food.x,food.y)]=true;
+        if(power)occ[key(power.x,power.y)]=true;
+        var danger={};
+        obstacles.forEach(function(o){ for(var dx=-2;dx<=2;dx++)for(var dy=-2;dy<=2;dy++){ var x=o.x+dx,y=o.y+dy; if(x>=0&&x<COLS&&y>=0&&y<ROWS) danger[key(x,y)]=true; } });
+        if(trail&&trail.length){ var body=resampleBody(); body.forEach(function(s){ for(var dx2=-1;dx2<=1;dx2++)for(var dy2=-1;dy2<=1;dy2++){ var x2=Math.floor(s.x)+dx2,y2=Math.floor(s.y)+dy2; if(x2>=0&&x2<COLS&&y2>=0&&y2<ROWS) danger[key(x2,y2)]=true; } }); }
+        var near=[],hxC=Math.floor(hx),hyC=Math.floor(hy);
+        Object.keys(danger).forEach(function(k){ if(occ[k])return; var p=k.split(","),x=+p[0],y=+p[1]; if(Math.hypot(x-hxC,y-hyC)<3.5)return; near.push({x:x,y:y}); });
+        if(!near.length) return null;
+        return near[Math.floor(Math.random()*near.length)];
+      }
       function maybeSpawnGold(force){
         if(gold) return;
         var chance = modeKey==="chaos"?0.34:0.24;
         if(force||Math.random()<chance){
-          var c=randomEmptyCell(); if(c){gold=c; goldExpires=now()+7000;}
+          var c=(Math.random()<0.72?dangerCell():null)||randomEmptyCell();
+          if(c){gold=c; goldExpires=now()+7000;}
         }
       }
       var POWER_TYPES=["star","shield","slow"];
@@ -510,7 +574,7 @@
           var b=document.createElement("button");
           b.type="button"; b.className="stage-card"; b.setAttribute("aria-pressed",idx===currentStage?"true":"false");
           b.disabled=idx>highestUnlocked;
-          b.innerHTML="<b><span>ステージ"+(idx+1)+" "+st.name+"</span>"+(clearedStages[idx]?"<span class='clear-mark'>✓ クリア</span>":(idx>highestUnlocked?"<span>🔒</span>":""))+"</b><small>目標：りんご"+st.target+"個 ／ "+st.desc+"</small>";
+          b.innerHTML="<b><span>ステージ"+(idx+1)+" "+st.name+"</span>"+(clearedStages[idx]?"<span class='clear-mark'>✓ クリア</span>":(idx>highestUnlocked?"<span>🔒</span>":""))+"</b><small>目標：りんご"+st.target+"個 ／ "+st.tempo+" ／ "+st.desc+"</small>";
           b.addEventListener("click",function(){ currentStage=idx; if(state!=="playing"){ resetGame(); state="idle"; } renderStages(); updateStageBanner(); toast("ステージ"+(idx+1)+"「"+st.name+"」を選択"); });
           stageGrid.appendChild(b);
         });
@@ -565,6 +629,8 @@
       }
       function stageClear(){
         state="clear"; lastStep=now();
+        /* praise the player (Sakurai): confetti + flash + a beat of hit-stop */
+        spawnConfetti(); triggerFlash(255,255,255,220,0.3); triggerShake(4,240); triggerHitstop(120);
         clearedStages[currentStage]=true;
         if(currentStage+1<STAGES.length) highestUnlocked=Math.max(highestUnlocked,currentStage+1);
         var bonus=100+currentStage*20; score+=bonus;
@@ -578,6 +644,8 @@
         ovNewBest.classList.remove("show");
         ovFinal.innerHTML="<span>スコア <b>"+score+" 点</b></span><span>ベスト <b>"+best+" 点</b></span><span>りんご <b>"+apples+" 個</b></span><span>長さ <b>"+segCount+"</b></span><span>最大コンボ <b>"+maxCombo+"</b></span><span>生存 <b>"+Math.floor(elapsedSec())+" 秒</b></span>";
         ovFinal.classList.add("show");
+        if(ovMeters){ ovMeters.textContent="🐍 ヘビの全長 約"+lengthMeters()+" m（"+segCount+"節）"; ovMeters.classList.remove("hidden"); }
+        startBtn.classList.remove("big-retry");
         startBtn.textContent="↺ このステージを再挑戦";
         nextStageBtn.classList.toggle("hidden",isLast);
         nextStageBtn.textContent=isLast?"":"次のステージへ ➜";
@@ -624,6 +692,19 @@
         var need=Math.max(0,5-combo);
         if(isFever()){ feverFill.style.width="100%"; feverState.innerHTML="<span class='on'>🔥 フィーバー中！ 全得点2倍</span>"; }
         else { feverFill.style.width=(Math.min(combo,5)/5*100)+"%"; feverState.innerHTML="あと <b>"+need+"</b> コンボ"; }
+        /* Sakurai: keep the next reward dangling in front of the player at all times */
+        if(nextRewardEl){
+          var bestM=null,bestRatio=-1;
+          MISSIONS.forEach(function(m){ if(missionDone[m.id])return; var cur=0; try{cur=m.goal();}catch(e){} var r=m.target?cur/m.target:0; if(r>bestRatio){bestRatio=r;bestM=m;} });
+          var html="";
+          if(bestM){ var cur2=0; try{cur2=bestM.goal();}catch(e){} html+="<span class='pill'>🎁 次のミッション「"+bestM.text+"」まで あと <b>"+Math.max(0,bestM.target-cur2)+bestM.unit+"</b></span>"; }
+          else html+="<span class='pill'>🎁 ミッション全達成！</span>";
+          var nextSkin=null;
+          Object.keys(SKIN_UNLOCK).forEach(function(k){ if(sessionApples+(apples||0)<SKIN_UNLOCK[k]&&(!nextSkin||SKIN_UNLOCK[k]<SKIN_UNLOCK[nextSkin])) nextSkin=k; });
+          if(nextSkin) html+="<span class='pill skin'>🎨 スキン解放まで りんご あと <b>"+(SKIN_UNLOCK[nextSkin]-(sessionApples+(apples||0)))+"個</b></span>";
+          if(!isFever()) html+="<span class='pill'>🔥 フィーバーまで あと <b>"+Math.max(0,5-combo)+"コンボ</b></span>";
+          nextRewardEl.innerHTML=html;
+        }
         shieldBadge.classList.toggle("on",!!shield);
         slowBadge.classList.toggle("on",now()<slowUntil);
         boardWrap.classList.toggle("fever",isFever());
@@ -666,6 +747,9 @@
       function gameOver(){
         if(state==="over"||state==="clear") return;
         state="over"; lastStep=now(); vibrate([60,40,120]); sOver();
+        /* Sakurai: death is short and flashy — hit-stop + flash + big shake,
+           then the (big) retry button is up almost immediately. */
+        triggerHitstop(320); triggerFlash(255,70,50,300,0.42); triggerShake(11,380);
         nextStageBtn.classList.add("hidden"); exitFsBtn.classList.remove("hidden");
         shakeUntil=now()+320; boardWrap.classList.remove("shake"); void boardWrap.offsetWidth; boardWrap.classList.add("shake");
         var isBest=score>best; if(isBest) best=score;
@@ -683,8 +767,12 @@
           "<span>最大コンボ <b>"+maxCombo+"</b></span><span>生存時間 <b>"+Math.floor(elapsedSec())+" 秒</b></span>"+
           "<span>ミッション <b>"+Object.keys(missionDone).length+" / "+MISSIONS.length+"</b></span><span>モード <b>"+({classic:"クラシック",wrap:"ラップ",chaos:"カオス"})[modeKey]+"</b></span>";
         ovFinal.classList.add("show");
-        startBtn.textContent="↺ もう一度挑戦";
-        overlay.classList.remove("hidden");
+        if(ovMeters){ ovMeters.textContent="🐍 ヘビの全長 約"+lengthMeters()+" m（"+segCount+"節）"; ovMeters.classList.remove("hidden"); }
+        /* Fast retry: biggest button, first in the overlay, instant restart on tap */
+        startBtn.classList.add("big-retry");
+        startBtn.textContent="↺ すぐもう一度";
+        /* brief beat so the flash/shake reads, then the retry screen (total <0.35s) */
+        setTimeout(function(){ if(state==="over") overlay.classList.remove("hidden"); },300);
       }
 
       function useShieldWall(head){
@@ -781,13 +869,17 @@
         trail=[]; for(var i=0;i<120;i++){ trail.push({x:hx-Math.cos(angle)*i*0.06, y:hy-Math.sin(angle)*i*0.06}); }
         selfGraceUntil=now()+900;
       }
-      function triggerFever(t){ if(!isFever()){ feverUntil=t+8000; feverCount++; toast("🔥 フィーバー突入！ 8秒間 全得点2倍"); sFever(); } }
+      function triggerFever(t){ if(!isFever()){ feverUntil=t+8000; feverCount++; triggerHitstop(90); triggerShake(6,220); triggerFlash(255,110,30,160,0.22); toast("🔥 フィーバー突入！ 8秒間 全得点2倍"); sFever(); } }
       function onEatCommon(t){
         if(lastEatAt&&t-lastEatAt<=3500) combo++; else combo=1;
         lastEatAt=t; if(combo>maxCombo)maxCombo=combo;
         if(combo===5) triggerFever(t);
       }
       function updateContinuous(dtMs){
+        /* Hit-stop (Sakurai: always include it): freeze the world briefly on
+           every eat. Particles / hit marks / confetti keep moving in draw(),
+           so the stopped instant still reads as impact. */
+        if(now()<hitstopUntil) return;
         var dt=Math.min(0.05,dtMs/1000), t=now();
         /* steering: targetAngle is set by dragging anywhere on the game
            screen. No keyboard steering. */
@@ -823,26 +915,27 @@
           }}
         }
         var fever=isFever();
-        /* food */
-        if(food&&distToCell(food.x,food.y)<0.72){
+        /* food — pickup radius is deliberately wider than the drawing
+           (Sakurai: generous hitboxes, missing a pickup is pure stress) */
+        if(food&&distToCell(food.x,food.y)<0.92){
           var fc=food; apples++; segCount++; sessionApplesTick(); onEatCommon(t);
           var bonus=Math.min(20,Math.max(0,(combo-1)*2)), pts=(10+bonus)*(fever?2:1);
-          score+=pts; burst(fc,"#ff5d5d",16); floatText(fc,"+"+pts+(combo>=2?" ×"+combo:""),fever?"#ffb020":"#ffffff");
+          score+=pts; spawnHitMark(fc,"#ff5d5d",false); triggerHitstop(50); triggerShake(2.2,110); floatText(fc,"+"+pts+(combo>=2?" ×"+combo:""),fever?"#ffb020":"#ffffff");
           sEat(); vibrate(18); placeFood(); maybeSpawnGold(false);
           var nl=1+Math.floor(apples/5);
           if(nl>level){ level=nl; toast("⬆ レベル"+level+"！ スピードアップ"); sLevel(); if(modeKey==="chaos") addObstacle(); }
           checkMissions(); updateHud();
           if(apples>=STAGES[currentStage].target){ stageClear(); return; }
         }
-        if(gold&&distToCell(gold.x,gold.y)<0.72){
+        if(gold&&distToCell(gold.x,gold.y)<0.92){
           var gc=gold; goldEaten++; segCount++; onEatCommon(t);
-          var gp=50*(fever?2:1); score+=gp; burst(gc,"#ffc93c",24); floatText(gc,"+"+gp+" GOLD","#ffc93c"); sGold(); vibrate(30); gold=null;
+          var gp=50*(fever?2:1); score+=gp; spawnHitMark(gc,"#ffc93c",true); triggerHitstop(115); triggerShake(5,180); triggerFlash(255,201,60,120,0.18); floatText(gc,"+"+gp+" GOLD","#ffc93c"); sGold(); vibrate(30); gold=null;
         }
-        if(power&&distToCell(power.x,power.y)<0.72){
+        if(power&&distToCell(power.x,power.y)<0.9){
           var pc=power;
-          if(pc.type==="star"){ starEaten++; segCount++; var spp=100*(fever?2:1); score+=spp; burst(pc,"#ffe58a",22); floatText(pc,"+"+spp+" ★","#ffe58a"); }
-          if(pc.type==="shield"){ shieldGot++; shield=true; burst(pc,"#7db8ff",18); floatText(pc,"🛡️ GET","#a9ccff"); toast("🛡️ シールド装備！ 1回だけ死なない"); }
-          if(pc.type==="slow"){ slowGot++; slowUntil=t+8000; burst(pc,"#7fe6d8",18); floatText(pc,"🐢 SLOW","#a9f0e6"); toast("🐢 8秒間スローに"); }
+          if(pc.type==="star"){ starEaten++; segCount++; var spp=100*(fever?2:1); score+=spp; spawnHitMark(pc,"#ffe58a",true); triggerHitstop(135); triggerShake(5.5,200); triggerFlash(255,232,138,130,0.2); floatText(pc,"+"+spp+" ★","#ffe58a"); }
+          if(pc.type==="shield"){ shieldGot++; shield=true; spawnHitMark(pc,"#7db8ff",false); triggerHitstop(70); floatText(pc,"🛡️ GET","#a9ccff"); toast("🛡️ シールド装備！ 1回だけ死なない"); }
+          if(pc.type==="slow"){ slowGot++; slowUntil=t+8000; spawnHitMark(pc,"#7fe6d8",false); triggerHitstop(70); floatText(pc,"🐢 SLOW","#a9f0e6"); toast("🐢 8秒間スローに"); }
           sPower(); power=null; powerNextAt=t+11000+Math.random()*6000;
         }
         if(gold&&t>goldExpires) gold=null;
@@ -886,6 +979,8 @@
         }
         var shX=0,shY=0;
         if(timestamp<shakeUntil){ shX=(Math.random()-0.5)*7; shY=(Math.random()-0.5)*7; }
+        /* scaled shake: pattern differs by size, starts strong and converges */
+        if(shakeDur&&timestamp-shakeStart<shakeDur){ var sr=1-(timestamp-shakeStart)/shakeDur; var sm=shakeMag*sr*sr; shX+=(Math.random()-0.5)*2*sm*(shakeMag>6?1:0.35); shY+=(Math.random()-0.5)*2*sm; }
         ctx.save(); ctx.translate(ox+shX,oy+shY);
 
         // obstacles
@@ -978,6 +1073,25 @@
           ctx.restore();
         }
 
+        // hit marks: expanding shockwave rings from the pickup point.
+        // They keep moving even during hit-stop and fade fast.
+        hitRings=hitRings.filter(function(r){return r.life>0;});
+        hitRings.forEach(function(r){
+          r.r+=r.vr*0.016; r.life-=r.decay;
+          ctx.globalAlpha=Math.max(0,r.life)*(r.dark?0.9:0.55);
+          ctx.strokeStyle=r.color; ctx.lineWidth=r.dark?3.5:2;
+          ctx.beginPath(); ctx.arc(r.x*cw,r.y*ch,r.r*cw,0,Math.PI*2); ctx.stroke();
+        });
+        ctx.globalAlpha=1;
+        // confetti (stage-clear praise)
+        confetti=confetti.filter(function(c){return c.life>0&&c.y<ROWS+1;});
+        confetti.forEach(function(c){
+          c.x+=c.vx*0.016*3; c.y+=c.vy*0.016*3; c.rot+=c.vr; c.life-=c.decay;
+          ctx.save(); ctx.translate(c.x*cw,c.y*ch); ctx.rotate(c.rot);
+          ctx.globalAlpha=Math.max(0,Math.min(1,c.life*1.6)); ctx.fillStyle=c.color;
+          ctx.fillRect(-c.w*cw/2,-c.h*ch/2,c.w*cw,c.h*ch); ctx.restore();
+        });
+        ctx.globalAlpha=1;
         // particles
         particles=particles.filter(function(p){return p.life>0;});
         particles.forEach(function(p){
@@ -999,6 +1113,8 @@
         });
         ctx.globalAlpha=1;
         ctx.restore();
+        /* screen flash: mixed light, fades out with the hit-stop beat */
+        if(timestamp<flashUntil){ var fr=Math.max(0,(flashUntil-timestamp)/flashDur); ctx.fillStyle="rgba("+flashColor+","+(flashMax*fr).toFixed(3)+")"; ctx.fillRect(0,0,W,H); }
       }
       function star(cx,cy,r){
         ctx.beginPath();
@@ -1039,9 +1155,15 @@
         runStart=now(); lastStep=0; elapsedBefore=0;
         overlay.classList.add("hidden");
         ovRank.style.display="none"; ovFinal.classList.remove("show"); ovNewBest.classList.remove("show");
+        if(ovMeters) ovMeters.classList.add("hidden");
+        startBtn.classList.remove("big-retry");
+        hitstopUntil=0; confetti=[]; hitRings=[];
         pauseBtn.textContent="⏸ 一時停止";
         updateHud(); renderMissions();
-        toast("ステージ"+(currentStage+1)+"開始！ 画面をなぞって操作しよう");
+        /* Tutorial in the shape of the game itself: only the very first run
+           gets one short on-board hint, then it never interrupts again. */
+        if(!hintShown){ hintShown=true; playHintEl.classList.add("show"); setTimeout(function(){ playHintEl.classList.remove("show"); },3600); }
+        else toast("ステージ"+(currentStage+1)+"開始！");
       }
       function togglePause(){
         if(state==="playing"){
