@@ -295,7 +295,6 @@
       <h2>モード <span>途中で変えると次のゲームから適用</span></h2>
       <div class="chips" role="group" aria-label="モード">
         <button class="chip mode-chip" type="button" data-mode="classic" aria-pressed="true">クラシック<small>壁はすり抜ける</small></button>
-        <button class="chip mode-chip" type="button" data-mode="wrap" aria-pressed="false">ラップ<small>壁をすり抜ける</small></button>
         <button class="chip mode-chip" type="button" data-mode="chaos" aria-pressed="false">カオス<small>壁すり抜け＋障害物が増殖</small></button>
       </div>
       <p class="mode-desc" id="modeDesc">壁はすり抜けて反対側から出てくる。自分の体と岩に当たったら終わり。迷ったらこれ。</p>
@@ -373,7 +372,6 @@
       var SPEEDS={slow:165,normal:118,fast:82,insane:62};
       var MODES={
         classic:"壁はすり抜けて反対側から出てくる。自分の体と岩に当たったら終わり。迷ったらこれ。",
-        wrap:"壁はすり抜けて反対側から出てくる。逃げ道が多いぶん、自分に絡まりやすい。",
         chaos:"壁はすり抜けて反対側から出てくる。レベルが上がるたび岩の障害物が出現。金のりんごも出やすい高得点モード。"
       };
       var SKINS={
@@ -888,7 +886,7 @@
           "<span>長さ <b>"+segCount+"</b></span><span>レベル <b>"+level+"</b></span>"+
           "<span>りんご <b>"+apples+" 個</b></span><span>金のりんご <b>"+goldEaten+" 個</b></span>"+
           "<span>最大コンボ <b>"+maxCombo+"</b></span><span>生存時間 <b>"+Math.floor(elapsedSec())+" 秒</b></span>"+
-          "<span>ミッション <b>"+Object.keys(missionDone).length+" / "+MISSIONS.length+"</b></span><span>モード <b>"+({classic:"クラシック",wrap:"ラップ",chaos:"カオス"})[modeKey]+"</b></span>";
+          "<span>ミッション <b>"+Object.keys(missionDone).length+" / "+MISSIONS.length+"</b></span><span>モード <b>"+({classic:"クラシック",chaos:"カオス"})[modeKey]+"</b></span>";
         ovFinal.classList.add("show");
         if(ovMeters){ ovMeters.textContent="🐍 ヘビの全長 約"+lengthMeters()+" m（"+segCount+"節）"; ovMeters.classList.remove("hidden"); }
         /* Fast retry: biggest button, first in the overlay, instant restart on tap */
