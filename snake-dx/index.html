@@ -90,7 +90,8 @@
       .sub{color:var(--ink-dim);font-size:.9rem;margin:6px auto 0;line-height:1.6;max-width:46em}
       .sub b{color:var(--ink)}
       /* HUD */
-      .scorebar{display:grid;grid-template-columns:1.25fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+      .scorebar{display:grid;grid-template-columns:1.15fr .85fr .95fr .85fr .85fr;gap:6px;margin-bottom:10px}
+      .stat.lives .value{color:#e83e6b} @media(prefers-color-scheme:dark){.stat.lives .value{color:#ff7a9a}}
       .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:7px 6px 8px;text-align:center;box-shadow:var(--shadow-sm);min-width:0}
       .stat .label{font-size:.66rem;color:var(--ink-dim);letter-spacing:.09em;font-weight:700;white-space:nowrap}
       .stat .value{font-size:1.35rem;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -235,6 +236,7 @@
         <div class="stat best"><div class="label">ベスト</div><div class="value" id="best">0</div></div>
         <div class="stat"><div class="label">Lv / 長さ</div><div class="value" style="font-size:1.1rem;padding-top:2px"><span id="level">1</span> / <span id="length">3</span></div></div>
         <div class="stat combo" id="comboStat"><div class="label">コンボ</div><div class="value" id="combo">—</div></div>
+        <div class="stat lives"><div class="label">❤️ 残機</div><div class="value" id="lives">0</div></div>
       </div>
       <div class="fever-label"><span>🔥 フィーバーゲージ（コンボ5で発動）</span><span id="feverState">あと <b id="feverNeed">5</b> コンボ</span></div>
       <div class="fever-bar"><div class="fever-fill" id="feverFill"></div></div>
@@ -243,10 +245,13 @@
       <div class="board-wrap" id="boardWrap">
         <canvas id="board" width="640" height="640" aria-label="スネークゲームの盤面"></canvas>
         <div class="badge-row">
+          <span class="badge" id="livesBadge">❤️ 残機 ×0</span>
           <span class="badge" id="shieldBadge">🛡️ シールド</span>
+          <span class="badge" id="invBadge">✨ 無敵中</span>
           <span class="badge" id="launcherBadge">🚀 ランチャー保持中</span>
           <span class="badge" id="slowBadge">🐢 スロー中</span>
           <span class="badge" id="shedBadge">🐍 脱皮中</span>
+          <span class="badge" id="ghostBadge">👻 ゴースト中</span>
         </div>
         <div class="toast" id="toast" role="status"></div>
         <div class="play-hint" id="playHint">👆 画面をなぞって操作</div>
@@ -367,7 +372,9 @@
           menuSoundBtn=document.getElementById("menuSoundBtn"), menuStageBtn=document.getElementById("menuStageBtn"),
           menuExitBtn=document.getElementById("menuExitBtn"),
           fireBtn=document.getElementById("fireBtn"), launcherBadge=document.getElementById("launcherBadge"),
-          shedBadge=document.getElementById("shedBadge");
+          shedBadge=document.getElementById("shedBadge"), invBadge=document.getElementById("invBadge"),
+          ghostBadge=document.getElementById("ghostBadge"),
+          livesEl=document.getElementById("lives"), livesBadge=document.getElementById("livesBadge");
 
       var SPEEDS={slow:165,normal:118,fast:82,insane:62};
       var MODES={
@@ -393,7 +400,7 @@
       var toastTimer=null;
       /* stage & extended mission trackers */
       var currentStage=0, highestUnlocked=0, clearedStages={};
-      var starEaten=0, shieldGot=0, slowGot=0, feverCount=0;
+      var starEaten=0, shieldGot=0, slowGot=0, feverCount=0, thunderGot=0;
       /* ---- launcher state: the 🚀 launcher item puts a bomb in the snake's
          mouth (launcher=true) until the fire button launches it, another
          item is taken, or the snake runs into a block and it explodes ---- */
@@ -402,6 +409,21 @@
          segments are transparent and have no self-collision ---- */
       var shedUntil=0, blockGraceUntil=0;
       var SHED_DUR=8000, SHED_SEGS=5;
+      /* ---- ghost (👻 ゴースト) state: while active (5s), the whole snake
+         turns transparent and passes through obstacles and its own body —
+         no collision of any kind can end the run during the window ---- */
+      var ghostUntil=0, ghostGot=0;
+      var GHOST_DUR=5000;
+      /* ---- shield-break invincibility: when the shield shatters, the
+         snake is invincible for 1.5s so follow-up hits in the same pile-up
+         (e.g. a vertical column of blocks) cannot kill it back-to-back ---- */
+      var invincibleUntil=0;
+      var SHIELD_INV_DUR=1500;
+      /* ---- lives (❤️ ハート) state: heart item adds +1 stock. A fatal
+         hit while lives>0 consumes one stock instead of ending the run
+         and grants the same 1.5s invincibility as a shield break ---- */
+      var lives=0, heartGot=0;
+      var LIFE_INV_DUR=1500, LIVES_MAX=5;
       /* ---- free (continuous) movement state: NOT grid-locked ---- */
       var hx=9.5, hy=10.5, angle=0, targetAngle=0, segCount=3, trail=[];
       var pointerTarget=null, pointerDown=false, keysDown={}, selfGraceUntil=0, lastFrameTs=0;
@@ -410,11 +432,19 @@
          see STAGES[].sp per stage. */
       var FREE_SPEEDS={slow:4.4,normal:6.2,fast:9.4,insane:12.6};
       /* pickup time limits: gold apples vanish after 7s, every item
-         (⭐ star / 🛡️ shield / 🐢 slow / 🚀 launcher / 🐍 shed) after 9s */
+         (⭐ star / 🛡️ shield / 🐢 slow / 🚀 launcher / 🐍 shed / ⚡ thunder / レーザー / ❤️ heart / 👻 ghost / 🌪️ hurricane) after 9s */
       var GOLD_TTL=7000, POWER_TTL=9000;
       /* ---- Sakurai feel state: hit-stop / flash / scaled shake / hit marks / confetti ---- */
       var hitstopUntil=0, flashUntil=0, flashDur=1, flashColor="255,255,255", flashMax=0.35;
       var shakeMag=0, shakeStart=0, shakeDur=0, hitRings=[], confetti=[], hintShown=false;
+      /* ⚡ thunder bolts: jagged lightning drawn briefly on each struck cell */
+      var thunderBolts=[];
+      /* laser beams: straight segments (split where the beam wraps through
+         a wall) drawn briefly after firing; laserGot counts pickups */
+      var laserBeams=[], laserGot=0;
+      /* 🌪️ hurricane swirls: rotating arcs drawn briefly at the cells the
+         apples were blown away from and blown to */
+      var hurricaneSwirls=[], hurricaneGot=0;
       function triggerHitstop(ms){ var until=now()+ms; if(until>hitstopUntil) hitstopUntil=until; }
       function triggerFlash(r,g,b,ms,alpha){ flashColor=r+","+g+","+b; flashDur=ms; flashMax=alpha; flashUntil=now()+ms; }
       function triggerShake(mag,ms){ shakeMag=mag; shakeDur=ms; shakeStart=now(); }
@@ -563,7 +593,13 @@
       var sFever=function(){tone(520,1040,.22,"sawtooth",.05);tone(780,1560,.22,"sawtooth",.04,.05);};
       var sShieldBreak=function(){tone(300,90,.25,"sawtooth",.09);};
       var sBomb=function(){tone(170,38,.38,"sawtooth",.13);tone(95,30,.42,"square",.1,.02);tone(1200,300,.12,"square",.05,.01);};
+      var sThunder=function(){tone(1400,180,.18,"sawtooth",.11);tone(2200,300,.12,"square",.07,.02);tone(180,40,.28,"sawtooth",.1,.03);tone(900,200,.1,"square",.05,.09);};
+      var sLaser=function(){tone(1600,220,.28,"sawtooth",.11);tone(2400,340,.22,"square",.07,.02);tone(900,120,.3,"sawtooth",.08,.04);tone(3200,800,.12,"square",.05,.01);};
       var sLaunch=function(){tone(280,940,.16,"square",.07);tone(150,70,.1,"square",.04,.02);};
+      var sHeart=function(){tone(660,660,.08,"triangle",.08);tone(880,880,.09,"triangle",.08,.07);tone(1180,1180,.16,"triangle",.08,.15);};
+      var sGhost=function(){tone(240,720,.34,"sine",.09);tone(720,300,.3,"sine",.05,.06);tone(480,960,.22,"triangle",.04,.1);};
+      var sHurricane=function(){tone(180,900,.42,"sine",.1);tone(320,1400,.36,"triangle",.06,.05);tone(900,240,.4,"sine",.07,.12);tone(1400,500,.3,"triangle",.045,.2);};
+      var sLifeLost=function(){tone(520,260,.18,"triangle",.09);tone(760,1180,.16,"triangle",.07,.1);};
       var sOver=function(){tone(440,110,.5,"triangle",.09);};
       function vibrate(ms){ if(navigator.vibrate){ try{navigator.vibrate(ms);}catch(e){} } }
 
@@ -614,7 +650,7 @@
           if(c){gold=c; goldExpires=now()+GOLD_TTL;}
         }
       }
-      var POWER_TYPES=["star","launcher","shield","slow","shed"];
+      var POWER_TYPES=["star","launcher","shield","slow","shed","thunder","laser","heart","ghost","hurricane"];
       var powerIdx=0;
       /* The launcher appears ONLY near obstacle blocks: a launcher far from
          any rock would be pointless, so its spawn cells hug the rocks
@@ -779,11 +815,12 @@
         obstacles=[]; score=0; level=1; apples=0; goldEaten=0;
         combo=0; maxCombo=0; lastEatAt=0;
         shield=false; slowUntil=0; feverUntil=0;
-        launcher=false; bombShot=null; shedUntil=0; blockGraceUntil=0;
+        lives=0; heartGot=0;
+        launcher=false; bombShot=null; shedUntil=0; blockGraceUntil=0; invincibleUntil=0; ghostUntil=0;
         gold=null; power=null; powerNextAt=now()+9000;
-        particles=[]; floats=[];
+        particles=[]; floats=[]; thunderBolts=[]; laserBeams=[]; hurricaneSwirls=[];
         missionDone={};
-        starEaten=0; shieldGot=0; slowGot=0;
+        starEaten=0; shieldGot=0; slowGot=0; thunderGot=0; ghostGot=0; laserGot=0; hurricaneGot=0;
         obstacles=stageObstacles(currentStage);
         if(modeKey==="chaos"){ addObstacle(); addObstacle(); addObstacle(); }
         placeFood();
@@ -804,6 +841,8 @@
       function updateHud(){
         scoreEl.textContent=score; bestEl.textContent=best;
         levelEl.textContent=level; lenEl.textContent=segCount;
+        if(livesEl) livesEl.textContent=lives;
+        if(livesBadge){ livesBadge.textContent="❤️ 残機 ×"+lives; livesBadge.classList.toggle("on",lives>0); }
         if(combo>=2){ comboEl.textContent="×"+combo+(isFever()?" 🔥":""); comboStat.classList.toggle("hot",combo>=4||isFever()); }
         else { comboEl.textContent="—"; comboStat.classList.remove("hot"); }
         var need=Math.max(0,5-combo);
@@ -823,8 +862,10 @@
           nextRewardEl.innerHTML=html;
         }
         shieldBadge.classList.toggle("on",!!shield);
+        if(invBadge) invBadge.classList.toggle("on",now()<invincibleUntil);
         if(launcherBadge) launcherBadge.classList.toggle("on",!!launcher);
         if(shedBadge) shedBadge.classList.toggle("on",now()<shedUntil);
+        if(ghostBadge) ghostBadge.classList.toggle("on",now()<ghostUntil);
         /* the fire button exists ONLY while the launcher is active */
         if(fireBtn) fireBtn.classList.toggle("hidden",!launcher);
         slowBadge.classList.toggle("on",now()<slowUntil);
@@ -867,7 +908,7 @@
       /* ---------- core step ---------- */
       function gameOver(){
         if(state==="over"||state==="clear") return;
-        state="over"; lastStep=now(); bombShot=null; launcher=false; vibrate([60,40,120]); sOver();
+        state="over"; lastStep=now(); bombShot=null; launcher=false; invincibleUntil=0; vibrate([60,40,120]); sOver();
         /* Sakurai: death is short and flashy — hit-stop + flash + big shake,
            then the (big) retry button is up almost immediately. */
         triggerHitstop(320); triggerFlash(255,70,50,300,0.42); triggerShake(11,380);
@@ -886,7 +927,8 @@
           "<span>長さ <b>"+segCount+"</b></span><span>レベル <b>"+level+"</b></span>"+
           "<span>りんご <b>"+apples+" 個</b></span><span>金のりんご <b>"+goldEaten+" 個</b></span>"+
           "<span>最大コンボ <b>"+maxCombo+"</b></span><span>生存時間 <b>"+Math.floor(elapsedSec())+" 秒</b></span>"+
-          "<span>ミッション <b>"+Object.keys(missionDone).length+" / "+MISSIONS.length+"</b></span><span>モード <b>"+({classic:"クラシック",chaos:"カオス"})[modeKey]+"</b></span>";
+          "<span>❤️ ハート <b>"+heartGot+" 個</b></span><span>モード <b>"+({classic:"クラシック",chaos:"カオス"})[modeKey]+"</b></span>"+
+          "<span>ミッション <b>"+Object.keys(missionDone).length+" / "+MISSIONS.length+"</b></span><span>残機 <b>"+lives+"</b></span>";
         ovFinal.classList.add("show");
         if(ovMeters){ ovMeters.textContent="🐍 ヘビの全長 約"+lengthMeters()+" m（"+segCount+"節）"; ovMeters.classList.remove("hidden"); }
         /* Fast retry: biggest button, first in the overlay, instant restart on tap */
@@ -897,9 +939,9 @@
       }
 
       function useShieldWall(head){
-        // wrap through the wall once, shield consumed
-        shield=false; sShieldBreak(); vibrate(80); shakeUntil=now()+260;
-        toast("🛡️ シールドが身代わりに！壁をすり抜けた");
+        // wrap through the wall once, shield consumed (grants 1.5s invincibility)
+        breakShield(now()); shakeUntil=now()+260;
+        toast("🛡️ シールドが身代わりに！壁をすり抜けた（1.5秒間 無敵）");
         head.x=(head.x+COLS)%COLS; head.y=(head.y+ROWS)%ROWS;
         return head;
       }
@@ -915,18 +957,25 @@
         // obstacles
         var oi=-1;
         for(var i=0;i<obstacles.length;i++) if(obstacles[i].x===head.x&&obstacles[i].y===head.y){oi=i;break;}
+        if(now()<ghostUntil) oi=-1; /* 👻 ghost: pass straight through obstacles */
         if(oi>=0){
-          if(shield){ obstacles.splice(oi,1); shield=false; sShieldBreak(); toast("🛡️ シールドで岩を粉砕！"); burst(head,"#b9c4b2",16); }
+          if(shield){ obstacles.splice(oi,1); breakShield(now()); toast("🛡️ シールドで岩を粉砕！ 1.5秒間 無敵"); burst(head,"#b9c4b2",16); }
+          else if(lives>0){ var lo=obstacles[oi]; obstacles.splice(oi,1); burst(head,"#ff8fab",16); consumeLife(now(),head); }
           else return gameOver();
         }
         // self
         var si=-1;
         for(var j=0;j<snake.length-1;j++) if(snake[j].x===head.x&&snake[j].y===head.y){si=j;break;}
+        if(now()<ghostUntil) si=-1; /* 👻 ghost: pass straight through own body */
         if(si>=0){
           if(shield){
-            shield=false; sShieldBreak(); vibrate(80); toast("🛡️ シールド発動！体を切り離して回避");
+            breakShield(now()); toast("🛡️ シールド発動！体を切り離して回避（1.5秒間 無敵）");
             snake=snake.slice(0,si); // cut tail from collision point
             if(snake.length<2) snake=[snake[0],{x:snake[0].x-dir.x,y:snake[0].y-dir.y}];
+          } else if(lives>0){
+            snake=snake.slice(0,si);
+            if(snake.length<2) snake=[snake[0],{x:snake[0].x-dir.x,y:snake[0].y-dir.y}];
+            consumeLife(now(),head);
           } else return gameOver();
         }
 
@@ -1029,6 +1078,130 @@
         if(destroyed.length){ floatText({x:Math.floor(ex),y:Math.floor(ey)},"💥 "+destroyed.length+"個破壊 +"+pts,"#ffb37a"); toast("💥 ボム命中！ 岩を "+destroyed.length+" 個 破壊（+"+pts+"点）"); }
         updateHud();
       }
+      /* ---------- thunder (⚡ サンダー): 10 random field cells are struck
+         by lightning; any obstacle on a struck cell is destroyed ---------- */
+      function thunderStrike(t){
+        var picked=[], seen={}, guard=0;
+        while(picked.length<10 && guard<300){
+          guard++;
+          var cx=Math.floor(Math.random()*COLS), cy=Math.floor(Math.random()*ROWS), k=key(cx,cy);
+          if(seen[k]) continue;
+          seen[k]=true; picked.push({x:cx,y:cy});
+        }
+        var destroyed=[];
+        picked.forEach(function(cell){
+          thunderBolts.push({x:cell.x,y:cell.y,life:1,decay:0.055+Math.random()*0.03,seed:Math.random()*1000,jit:(Math.random()-0.5)*0.36});
+          for(var i=0;i<obstacles.length;i++){
+            if(obstacles[i].x===cell.x&&obstacles[i].y===cell.y){ destroyed.push(obstacles[i]); break; }
+          }
+        });
+        destroyed.forEach(function(dc){
+          var ix=obstacles.indexOf(dc); if(ix>=0) obstacles.splice(ix,1);
+          burst(dc,"#ffe95c",12); burst(dc,"#b9c4b2",9); burst(dc,"#7ec8ff",6);
+        });
+        var pts=destroyed.length*20*(isFever()?2:1); score+=pts;
+        triggerHitstop(120); triggerShake(destroyed.length?7:4.5,240); triggerFlash(255,232,90,170,0.28);
+        sThunder(); vibrate(destroyed.length?[35,30,60]:40);
+        var headCell={x:Math.floor(hx),y:Math.floor(hy)};
+        if(destroyed.length){
+          floatText(destroyed[0],"⚡ "+destroyed.length+"マス破壊 +"+pts,"#ffe95c");
+          destroyed.forEach(function(dc){ spawnHitMark(dc,"#ffe95c",false); });
+          toast("⚡ サンダー！ ランダム10マスに落雷、障害物を "+destroyed.length+" マス破壊（+"+pts+"点）");
+        } else {
+          floatText(headCell,"⚡ サンダー！","#ffe95c");
+          toast("⚡ サンダー！ ランダム10マスに落雷（障害物には当たらなかった）");
+        }
+        updateHud();
+      }
+      /* ---------- laser (レーザー): fires a straight beam from the mouth
+         in the snake's current heading. Every obstacle on that line is
+         destroyed (+20 each). Walls wrap, so the beam wraps too and is
+         traced for one full field crossing (segments split at the wrap
+         points for drawing). There are no enemy characters in this game,
+         so obstacles are the beam's targets. ---------- */
+      function laserFire(t){
+        var vx=Math.cos(angle), vy=Math.sin(angle);
+        var maxDist=Math.hypot(COLS,ROWS)+2, stepLen=0.1;
+        var seen={}, destroyed=[];
+        var segments=[], segStart=null, prevWx=null, prevWy=null;
+        for(var d=0.55; d<=maxDist; d+=stepLen){
+          var rx=hx+vx*d, ry=hy+vy*d;
+          var wx=((rx%COLS)+COLS)%COLS, wy=((ry%ROWS)+ROWS)%ROWS;
+          if(segStart===null){ segStart={x:wx,y:wy}; }
+          else if(Math.abs(wx-prevWx)>1.5||Math.abs(wy-prevWy)>1.5){
+            segments.push({x1:segStart.x,y1:segStart.y,x2:prevWx,y2:prevWy,life:1,decay:0.045});
+            segStart={x:wx,y:wy};
+          }
+          prevWx=wx; prevWy=wy;
+          var cx=Math.floor(wx), cy=Math.floor(wy), k=key(cx,cy);
+          if(seen[k]) continue;
+          seen[k]=true;
+          for(var i=0;i<obstacles.length;i++){
+            if(obstacles[i].x===cx&&obstacles[i].y===cy){ destroyed.push(obstacles[i]); break; }
+          }
+        }
+        if(segStart&&prevWx!==null) segments.push({x1:segStart.x,y1:segStart.y,x2:prevWx,y2:prevWy,life:1,decay:0.045});
+        laserBeams=segments;
+        destroyed.forEach(function(dc){
+          var ix=obstacles.indexOf(dc); if(ix>=0) obstacles.splice(ix,1);
+          burst(dc,"#ff5a4e",12); burst(dc,"#b9c4b2",9); burst(dc,"#ffd23c",6);
+          spawnHitMark(dc,"#ff5a4e",false);
+        });
+        var pts=destroyed.length*20*(isFever()?2:1); score+=pts;
+        triggerHitstop(120); triggerShake(destroyed.length?7:4.5,240); triggerFlash(255,70,50,170,0.26);
+        sLaser(); vibrate(destroyed.length?[35,30,60]:40);
+        var headCell={x:Math.floor(hx),y:Math.floor(hy)};
+        if(destroyed.length){
+          floatText(destroyed[0],"レーザー "+destroyed.length+"マス破壊 +"+pts,"#ff8a7a");
+          toast("レーザー発射！ 進行方向の直線上の障害物を "+destroyed.length+" マス破壊（+"+pts+"点）");
+        } else {
+          floatText(headCell,"レーザー発射！","#ff8a7a");
+          toast("レーザー発射！ 進行方向へビーム（障害物には当たらなかった）");
+        }
+        updateHud();
+      }
+      /* ---------- hurricane (🌪️ ハリケーン): a whirlwind sweeps the
+         field and every apple on it — the red apple, and the gold apple
+         too when one is out — is blown to a new random cell. Positions
+         always change: randomEmptyCell() counts the apples' current
+         cells as occupied, so a shuffle can never land back on the same
+         cell. The gold apple keeps its remaining time after the move. --- */
+      function hurricaneShuffle(t){
+        var moved=[];
+        if(food){
+          var oldFood={x:food.x,y:food.y};
+          placeFood();
+          if(food&&(food.x!==oldFood.x||food.y!==oldFood.y)){
+            hurricaneSwirls.push({x:oldFood.x,y:oldFood.y,life:1,decay:0.028,spin:1});
+            hurricaneSwirls.push({x:food.x,y:food.y,life:1,decay:0.028,spin:-1});
+            burst(oldFood,"#9fe3f2",10); burst(food,"#9fe3f2",10); burst(food,"#ff5d5d",6);
+            moved.push("リンゴ");
+          }
+        } else {
+          placeFood();
+          if(food){ hurricaneSwirls.push({x:food.x,y:food.y,life:1,decay:0.028,spin:-1}); moved.push("リンゴ"); }
+        }
+        if(gold){
+          var oldGold={x:gold.x,y:gold.y};
+          var gc=randomEmptyCell();
+          if(gc&&(gc.x!==oldGold.x||gc.y!==oldGold.y)){
+            gold=gc;
+            hurricaneSwirls.push({x:oldGold.x,y:oldGold.y,life:1,decay:0.028,spin:-1});
+            hurricaneSwirls.push({x:gold.x,y:gold.y,life:1,decay:0.028,spin:1});
+            burst(oldGold,"#9fe3f2",8); burst(gold,"#ffc93c",8);
+            moved.push("金のリンゴ");
+          }
+        }
+        triggerHitstop(90); triggerShake(4.5,220); triggerFlash(140,220,240,160,0.2);
+        sHurricane(); vibrate(35);
+        if(moved.length){
+          if(food) floatText(food,"🌪️ 移動！","#9fe3f2");
+          toast("🌪️ ハリケーン！ "+moved.join("と")+"の位置がランダムに変わった");
+        } else {
+          toast("🌪️ ハリケーン！ （動かせるリンゴがなかった）");
+        }
+        updateHud();
+      }
       function updateBombShot(dt){
         if(!bombShot) return;
         var sp=15*dt, steps=Math.max(1,Math.ceil(sp/0.18)), inc=sp/steps;
@@ -1054,7 +1227,35 @@
       }
       function rebuildTrailBehind(){
         trail=[]; for(var i=0;i<120;i++){ trail.push({x:hx-Math.cos(angle)*i*0.06, y:hy-Math.sin(angle)*i*0.06}); }
-        selfGraceUntil=now()+900;
+        selfGraceUntil=Math.max(selfGraceUntil,now()+900);
+      }
+      /* Consume the shield: it shatters and grants SHIELD_INV_DUR (1.5s)
+         of invincibility — no obstacle or self collision can end the run
+         during that window, so chained hits right after the break are safe. */
+      function breakShield(t){
+        shield=false;
+        invincibleUntil=t+SHIELD_INV_DUR;
+        if(selfGraceUntil<invincibleUntil) selfGraceUntil=invincibleUntil;
+        sShieldBreak(); vibrate(80);
+        updateHud();
+      }
+      /* Consume one extra life instead of game over: grants LIFE_INV_DUR
+         (1.5s) invincibility so the run continues. Returns true when a
+         life was spent. Caller clears the immediate threat (destroys the
+         rock / shortens the body) before calling this. */
+      function consumeLife(t,hitCell){
+        if(lives<=0) return false;
+        lives--;
+        invincibleUntil=t+LIFE_INV_DUR;
+        if(selfGraceUntil<invincibleUntil) selfGraceUntil=invincibleUntil;
+        blockGraceUntil=t+700;
+        triggerHitstop(130); triggerShake(7,240); triggerFlash(255,80,120,170,0.26);
+        sLifeLost(); vibrate([50,40,80]);
+        if(hitCell) spawnHitMark(hitCell,"#ff5d7a",true);
+        toast("❤️ 残機で復活！ 1.5秒間 無敵（残り残機 "+lives+"）");
+        if(hitCell) floatText(hitCell,"❤️ 残機 -1","#ff8fab");
+        updateHud();
+        return true;
       }
       function triggerFever(t){ if(!isFever()){ feverUntil=t+8000; feverCount++; triggerHitstop(90); triggerShake(6,220); triggerFlash(255,110,30,160,0.22); toast("🔥 フィーバー突入！ 8秒間 全得点2倍"); sFever(); } }
       function onEatCommon(t){
@@ -1088,19 +1289,21 @@
         syncSnakeFromTrail();
         /* obstacles: in launcher state the mouth-held bomb explodes on
            contact and destroys 2 cells instead of ending the run */
-        var oi=(t<blockGraceUntil)?-1:hitObstacle();
+        var oi=(t<blockGraceUntil||t<invincibleUntil||t<ghostUntil)?-1:hitObstacle();
         if(oi>=0){
           if(launcher){ explodeMouthBomb(oi,t); }
-          else if(shield){ var oc=obstacles[oi]; obstacles.splice(oi,1); shield=false; sShieldBreak(); toast("🛡️ シールドで岩を粉砕！"); burst(oc,"#b9c4b2",16); selfGraceUntil=t+600; }
+          else if(shield){ var oc=obstacles[oi]; obstacles.splice(oi,1); breakShield(t); toast("🛡️ シールドで岩を粉砕！ 1.5秒間 無敵"); burst(oc,"#b9c4b2",16); }
+          else if(lives>0){ var oc2=obstacles[oi]; obstacles.splice(oi,1); burst(oc2,"#ff8fab",16); burst(oc2,"#b9c4b2",10); consumeLife(t,oc2); }
           else return gameOver();
         }
         /* self collision: while 🐍 脱皮 is active, the last 5 tail segments
            (counted from the rear) are ghost — no collision against them */
-        if(t>selfGraceUntil && segCount>=8){
+        if(t>selfGraceUntil && t>=invincibleUntil && t>=ghostUntil && segCount>=8){
           var body=resampleBody();
           var shedOn=t<shedUntil;
           for(var si=6;si<body.length;si++){ if(shedOn&&si>=body.length-SHED_SEGS) continue; if(Math.hypot(hx-body[si].x,hy-body[si].y)<0.46){
-            if(shield){ shield=false; sShieldBreak(); vibrate(80); toast("🛡️ シールド発動！体を短くして回避"); segCount=Math.max(3,segCount-4); rebuildTrailBehind(); }
+            if(shield){ breakShield(t); toast("🛡️ シールド発動！体を短くして回避（1.5秒間 無敵）"); segCount=Math.max(3,segCount-4); rebuildTrailBehind(); if(selfGraceUntil<invincibleUntil) selfGraceUntil=invincibleUntil; }
+            else if(lives>0){ var hc={x:Math.floor(hx),y:Math.floor(hy)}; segCount=Math.max(3,segCount-4); rebuildTrailBehind(); consumeLife(t,hc); }
             else return gameOver();
             break;
           }}
@@ -1137,6 +1340,65 @@
             floatText(pc,"🐍 脱皮！","#b9f2a0");
             toast("🐍 脱皮！ "+(SHED_DUR/1000)+"秒間、尻尾の後ろ5マスは透明で当たらない");
             vibrate(25);
+          }
+          if(pc.type==="thunder"){
+            /* ⚡ サンダー: instantly strikes 10 random field cells with
+               lightning — obstacles on those cells are destroyed (+20 each).
+               Instant effect like ⭐, so no badge / duration state. */
+            thunderGot++;
+            spawnHitMark(pc,"#ffdf3c",true);
+            /* thunderStrike() plays its own sound / flash / shake / toast */
+            thunderStrike(t);
+          }
+          if(pc.type==="laser"){
+            /* レーザー: instantly fires a straight beam from the mouth in
+               the current heading — every obstacle on that line is
+               destroyed (+20 each). Instant effect like ⚡, so no badge /
+               duration state. */
+            laserGot++;
+            spawnHitMark(pc,"#ff5a4e",true);
+            /* laserFire() plays its own sound / flash / shake / toast */
+            laserFire(t);
+          }
+          if(pc.type==="heart"){
+            /* ❤️ ハート: +1 extra life (stock). At max stock it converts
+               to points so the pickup is never wasted. */
+            heartGot++;
+            if(lives>=LIVES_MAX){
+              var hpPts=100*(fever?2:1); score+=hpPts;
+              spawnHitMark(pc,"#ff5d7a",true); triggerHitstop(90);
+              floatText(pc,"❤️ MAX +"+hpPts,"#ff8fab");
+              toast("❤️ 残機は最大（"+LIVES_MAX+"）！ 代わりに +"+hpPts+"点");
+            } else {
+              lives++;
+              spawnHitMark(pc,"#ff5d7a",true); triggerHitstop(90); triggerShake(3.5,150); triggerFlash(255,93,122,130,0.18);
+              floatText(pc,"❤️ 残機 +1","#ff8fab");
+              toast("❤️ ハート取得！ 残機 +1（現在 "+lives+"）― 当たっても1.5秒無敵で続行");
+              sHeart();
+            }
+            vibrate(25);
+          }
+          if(pc.type==="ghost"){
+            /* 👻 ゴースト: for GHOST_DUR (5s) the whole snake turns
+               transparent and passes through obstacles and its own body.
+               Unlike the shield-break / life invincibility, hits are not
+               "absorbed" — there is simply no collision at all. */
+            ghostGot++;
+            ghostUntil=t+GHOST_DUR;
+            spawnHitMark(pc,"#dfe9ff",false); triggerHitstop(70); triggerShake(2,120); triggerFlash(220,235,255,140,0.16);
+            floatText(pc,"👻 ゴースト！","#eef4ff");
+            toast("👻 ゴースト！ "+(GHOST_DUR/1000)+"秒間 透明になり、障害物も自分の体もすり抜ける");
+            sGhost();
+            vibrate(25);
+          }
+          if(pc.type==="hurricane"){
+            /* 🌪️ ハリケーン: instantly blows every apple on the field —
+               the red apple (and the gold one, if out) — to a new random
+               cell. Instant effect like ⚡/レーザー, so no badge / duration
+               state. hurricaneShuffle() plays its own sound / toast. */
+            hurricaneGot++;
+            spawnHitMark(pc,"#7fd4e8",true);
+            hurricaneShuffle(t);
           }
           if(pc.type==="launcher"){
             /* 🚀 launcher pickup: a bomb is held in the mouth, not exploded
@@ -1252,8 +1514,8 @@
         if(power){
           var pcx=(power.x+0.5)*cw, pcy=(power.y+0.5)*ch;
           var bob=Math.sin(timestamp/260)*2.5;
-          var emoji= power.type==="star"?"⭐":power.type==="shield"?"🛡️":power.type==="launcher"?"🚀":power.type==="shed"?"🐍":"🐢";
-          var ringC= power.type==="star"?"#ffe58a":power.type==="shield"?"#7db8ff":power.type==="launcher"?"#ff8a3c":power.type==="shed"?"#8be26b":"#7fe6d8";
+          var emoji= power.type==="star"?"⭐":power.type==="shield"?"🛡️":power.type==="launcher"?"🚀":power.type==="shed"?"🐍":power.type==="thunder"?"⚡":power.type==="laser"?"🔫":power.type==="heart"?"❤️":power.type==="ghost"?"👻":power.type==="hurricane"?"🌪️":"🐢";
+          var ringC= power.type==="star"?"#ffe58a":power.type==="shield"?"#7db8ff":power.type==="launcher"?"#ff8a3c":power.type==="shed"?"#8be26b":power.type==="thunder"?"#ffdf3c":power.type==="laser"?"#ff5a4e":power.type==="heart"?"#ff5d7a":power.type==="ghost"?"#dfe9ff":power.type==="hurricane"?"#7fd4e8":"#7fe6d8";
           var pRemain=power.expires-timestamp, pFrac=Math.max(0,pRemain/POWER_TTL);
           var blinkOff= pRemain<2000 && Math.floor(timestamp/140)%2===0;
           ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.lineWidth=2.5;
@@ -1293,28 +1555,40 @@
           /* 🐍 脱皮: while active, the last 5 tail segments counted from
              the rear (pts[0] is the tail tip) are drawn almost transparent */
           var ghostN=(timestamp<shedUntil)?Math.min(SHED_SEGS,Math.max(0,pts.length-3)):0;
+          /* 👻 ゴースト: while active, the WHOLE snake turns transparent
+             (gentle flicker), so the player can see it is intangible */
+          var ghostBody=timestamp<ghostUntil;
+          var bodyAlpha=ghostBody?0.34+0.1*Math.sin(timestamp/130):1;
           if(ghostN>0){
-            ctx.globalAlpha=0.16;
+            ctx.globalAlpha=ghostBody?0.1:0.16;
             buildPath(0,Math.min(ghostN,pts.length-1)); ctx.stroke();
-            ctx.globalAlpha=1;
+            ctx.globalAlpha=bodyAlpha;
             buildPath(Math.min(ghostN,pts.length-1),pts.length-1); ctx.stroke();
           }else{
+            ctx.globalAlpha=bodyAlpha;
             buildPath(0,pts.length-1); ctx.stroke();
           }
+          ctx.globalAlpha=1;
           ctx.shadowBlur=0;
           // belly dots / pattern (skipped on the ghost tail)
-          ctx.fillStyle=skin.belly; ctx.globalAlpha=0.5;
+          ctx.fillStyle=skin.belly; ctx.globalAlpha=0.5*bodyAlpha;
           for(var d=2;d<pts.length;d+=2){ if(ghostN&&d<ghostN) continue; ctx.beginPath(); ctx.arc(pts[d].x,pts[d].y,cw*0.11,0,Math.PI*2); ctx.fill(); }
           ctx.globalAlpha=1;
           // tail taper
           var tail=pts[0];
-          if(ghostN) ctx.globalAlpha=0.16;
+          if(ghostN) ctx.globalAlpha=0.16; else if(ghostBody) ctx.globalAlpha=bodyAlpha;
           ctx.fillStyle=skin.dark; ctx.beginPath(); ctx.arc(tail.x,tail.y,cw*0.2,0,Math.PI*2); ctx.fill();
           ctx.globalAlpha=1;
           // head
           var hp=pts[pts.length-1];
+          if(ghostBody) ctx.globalAlpha=bodyAlpha;
           ctx.fillStyle=skin.head; ctx.beginPath(); ctx.arc(hp.x,hp.y,cw*0.46,0,Math.PI*2); ctx.fill();
+          ctx.globalAlpha=1;
+          /* ghost outline: a pale dashed ring marks the intangible head */
+          if(ghostBody){ ctx.save(); ctx.strokeStyle="rgba(238,244,255,.9)"; ctx.lineWidth=2.5; ctx.setLineDash([cw*0.16,cw*0.13]); ctx.lineDashOffset=-timestamp/28; ctx.beginPath(); ctx.arc(hp.x,hp.y,cw*0.6,0,Math.PI*2); ctx.stroke(); ctx.restore(); }
           if(shield){ ctx.strokeStyle="#7db8ff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(hp.x,hp.y,cw*0.56,0,Math.PI*2); ctx.stroke(); }
+          /* invincibility after a shield break: blinking gold ring around the head */
+          if(timestamp<invincibleUntil){ ctx.strokeStyle=Math.floor(timestamp/110)%2===0?"#ffd23c":"rgba(255,255,255,.92)"; ctx.lineWidth=3.5; ctx.beginPath(); ctx.arc(hp.x,hp.y,cw*0.64,0,Math.PI*2); ctx.stroke(); }
           // tongue (flicks)
           if(Math.floor(timestamp/500)%3!==0){
             ctx.strokeStyle="#ff5d7a"; ctx.lineWidth=2.5; ctx.beginPath();
@@ -1349,6 +1623,81 @@
           ctx.restore();
         }
 
+        // thunder bolts (⚡ サンダー): jagged lightning on each struck cell,
+        // fading fast. All 10 struck cells flash, hit or miss, so the
+        // randomness of the strike is readable at a glance.
+        thunderBolts=thunderBolts.filter(function(b){return b.life>0;});
+        thunderBolts.forEach(function(b){
+          b.life-=b.decay;
+          var bcx=(b.x+0.5)*cw, bcy=(b.y+0.5)*ch;
+          var topY=b.y*ch-ch*0.85, botY=bcy+ch*0.18;
+          ctx.save();
+          ctx.globalAlpha=Math.max(0,Math.min(1,b.life));
+          ctx.lineJoin="round"; ctx.lineCap="round";
+          /* impact flash */
+          ctx.fillStyle="rgba(255,233,92,.35)";
+          ctx.beginPath(); ctx.arc(bcx,bcy,cw*0.52,0,Math.PI*2); ctx.fill();
+          /* jagged bolt: 4 segments, lateral jitter from the bolt's seed */
+          var ptsB=[[bcx+b.jit*cw,topY]];
+          for(var bi=1;bi<4;bi++){
+            var by=topY+(botY-topY)*bi/4;
+            var bx=bcx+Math.sin(b.seed+bi*2.7)*cw*0.22*(bi%2?1:-1)*0.7+b.jit*cw*(1-bi/4);
+            ptsB.push([bx,by]);
+          }
+          ptsB.push([bcx,bcy]);
+          ctx.strokeStyle="rgba(255,190,20,.55)"; ctx.lineWidth=Math.max(4,cw*0.22);
+          ctx.beginPath(); ctx.moveTo(ptsB[0][0],ptsB[0][1]); for(var bj=1;bj<ptsB.length;bj++) ctx.lineTo(ptsB[bj][0],ptsB[bj][1]); ctx.stroke();
+          ctx.strokeStyle="#fffbe0"; ctx.lineWidth=Math.max(2,cw*0.09);
+          ctx.beginPath(); ctx.moveTo(ptsB[0][0],ptsB[0][1]); for(var bk=1;bk<ptsB.length;bk++) ctx.lineTo(ptsB[bk][0],ptsB[bk][1]); ctx.stroke();
+          /* small branch off the middle segment */
+          ctx.strokeStyle="rgba(255,251,224,.85)"; ctx.lineWidth=Math.max(1.4,cw*0.05);
+          ctx.beginPath(); ctx.moveTo(ptsB[2][0],ptsB[2][1]); ctx.lineTo(ptsB[2][0]+cw*0.3,ptsB[2][1]+ch*0.22); ctx.stroke();
+          ctx.restore();
+        });
+        ctx.globalAlpha=1;
+        // laser beams: a straight red beam from the mouth along the heading,
+        // split into segments where it wrapped through a wall. Thick glow,
+        // white-hot core, spark at the muzzle; fades fast like the bolts.
+        laserBeams=laserBeams.filter(function(b){return b.life>0;});
+        laserBeams.forEach(function(b){
+          b.life-=b.decay;
+          var a=Math.max(0,Math.min(1,b.life));
+          var x1=b.x1*cw, y1=b.y1*ch, x2=b.x2*cw, y2=b.y2*ch;
+          ctx.save();
+          ctx.globalAlpha=a;
+          ctx.lineCap="round";
+          ctx.strokeStyle="rgba(255,60,40,.35)"; ctx.lineWidth=Math.max(7,cw*0.34);
+          ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+          ctx.strokeStyle="rgba(255,90,60,.9)"; ctx.lineWidth=Math.max(3.5,cw*0.16);
+          ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+          ctx.strokeStyle="#fff5f0"; ctx.lineWidth=Math.max(1.6,cw*0.06);
+          ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+          ctx.fillStyle="rgba(255,210,180,.95)";
+          ctx.beginPath(); ctx.arc(x1,y1,cw*0.16*a+1,0,Math.PI*2); ctx.fill();
+          ctx.restore();
+        });
+        ctx.globalAlpha=1;
+        // hurricane swirls (🌪️ ハリケーン): three rotating arcs around the
+        // cells the apples were blown from / blown to, shrinking as they fade
+        hurricaneSwirls=hurricaneSwirls.filter(function(s){return s.life>0;});
+        hurricaneSwirls.forEach(function(s){
+          s.life-=s.decay;
+          var a=Math.max(0,Math.min(1,s.life));
+          var scx=(s.x+0.5)*cw, scy=(s.y+0.5)*ch;
+          var base=timestamp/90*s.spin;
+          ctx.save();
+          ctx.globalAlpha=a;
+          ctx.lineCap="round";
+          for(var ai=0;ai<3;ai++){
+            var rr=cw*(0.24+ai*0.15)*(0.55+0.45*a);
+            var st=base+ai*2.1;
+            ctx.strokeStyle=ai===1?"rgba(255,255,255,.9)":"rgba(127,212,232,.85)";
+            ctx.lineWidth=Math.max(1.6,cw*0.06);
+            ctx.beginPath(); ctx.arc(scx,scy,rr,st,st+Math.PI*1.15); ctx.stroke();
+          }
+          ctx.restore();
+        });
+        ctx.globalAlpha=1;
         // hit marks: expanding shockwave rings from the pickup point.
         // They keep moving even during hit-stop and fade fast.
         hitRings=hitRings.filter(function(r){return r.life>0;});
@@ -1417,6 +1766,8 @@
           if(combo>0&&lastEatAt&&ts-lastEatAt>3500){ /* handled in update */ }
           if(slowUntil&&performance.now()>slowUntil&&slowUntil!==0){ slowUntil=0; updateHud(); }
           if(shedUntil&&performance.now()>shedUntil){ shedUntil=0; updateHud(); }
+          if(ghostUntil&&performance.now()>ghostUntil){ ghostUntil=0; updateHud(); }
+          if(invincibleUntil&&performance.now()>invincibleUntil){ invincibleUntil=0; updateHud(); }
           if(feverUntil&&performance.now()>feverUntil){ feverUntil=0; updateHud(); }
         }
         draw(ts);
@@ -1472,7 +1823,7 @@
          Detailed info and every control button live here, so the board
          itself stays clear while playing. */
       function updateMenuInfo(){
-        menuScoreEl.textContent="ステージ"+(currentStage+1)+"「"+STAGES[currentStage].name+"」 ／ スコア "+score+" 点 ／ ベスト "+best+" 点 ／ 🍎 "+(apples||0)+" / "+STAGES[currentStage].target;
+        menuScoreEl.textContent="ステージ"+(currentStage+1)+"「"+STAGES[currentStage].name+"」 ／ スコア "+score+" 点 ／ ベスト "+best+" 点 ／ 🍎 "+(apples||0)+" / "+STAGES[currentStage].target+" ／ ❤️ 残機 "+lives;
         menuNextEl.innerHTML=nextRewardEl?nextRewardEl.innerHTML:"";
         menuSoundBtn.textContent=soundOn?"🔊 音 ON":"🔇 音 OFF";
       }
