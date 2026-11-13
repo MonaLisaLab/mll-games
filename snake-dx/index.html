@@ -39,7 +39,7 @@
          around the board. HUD and buttons float ON the board. */
       #gameShell.fs-on{position:fixed;inset:0;z-index:9999;background:var(--board-bg);border-radius:0;padding:0;display:flex;flex-direction:column;overflow:hidden;height:100vh;height:100dvh}
       body.fs-locked .wrap{padding:0;max-width:none}
-      body.fs-locked header,body.fs-locked .group,body.fs-locked .howto,body.fs-locked .dpad{display:none !important}
+      body.fs-locked header,body.fs-locked .dpad{display:none !important}
       #gameShell.fs-on .board-wrap{position:absolute;inset:0;z-index:0;width:auto;height:auto;margin:0;border-radius:0;box-shadow:none;aspect-ratio:auto}
       #gameShell.fs-on .stage-banner{position:relative;z-index:5;padding:6px 10px;margin:calc(6px + env(safe-area-inset-top)) 10px 6px;font-size:.8rem;flex:none;background:rgba(8,18,10,.62);backdrop-filter:blur(3px)}
       #gameShell.fs-on .scorebar{position:relative;z-index:5;margin:0 10px 6px;flex:none}
@@ -50,11 +50,24 @@
       #gameShell.fs-on .stat.best .value{color:var(--gold)}
       #gameShell.fs-on .fever-label{position:relative;z-index:5;flex:none;margin:0 12px 3px;color:rgba(255,255,255,.78)}
       #gameShell.fs-on .fever-bar{position:relative;z-index:5;margin:0 10px 0;flex:none;background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.14);box-shadow:none}
-      #gameShell.fs-on .toast{top:118px}
-      /* control buttons: small translucent chips down the right edge, on the board */
-      #gameShell.fs-on .controls-bar{position:absolute;z-index:6;right:10px;top:50%;transform:translateY(-50%);flex-direction:column;margin:0;gap:6px}
-      #gameShell.fs-on .controls-bar .btn{flex:none;min-height:2rem;font-size:.72rem;padding:6px 10px;background:rgba(10,22,13,.55);color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:none;backdrop-filter:blur(3px);white-space:nowrap}
-      @media(max-height:560px){#gameShell.fs-on .fever-label{display:none}}
+      #gameShell.fs-on .toast{top:88px}
+      /* SLIM HUD in fullscreen: one-line stage banner (goal text hidden),
+         compact stat strip, fever shown as a hairline bar only, and the
+         next-reward pills are NOT stacked on the board anymore — that info
+         lives in the menu screen (see .menu-overlay). */
+      #gameShell.fs-on .stage-banner{padding:3px 8px;margin-bottom:4px;font-size:.74rem}
+      #gameShell.fs-on .stage-banner small{display:none}
+      #gameShell.fs-on .stage-banner .prog{font-size:.72rem;padding:2px 8px}
+      #gameShell.fs-on .scorebar{gap:5px;margin-bottom:4px}
+      #gameShell.fs-on .stat{padding:2px 2px 3px;border-radius:9px}
+      #gameShell.fs-on .stat .label{font-size:.56rem;letter-spacing:.04em}
+      #gameShell.fs-on .stat .value{font-size:.95rem;line-height:1.1}
+      #gameShell.fs-on .fever-label{display:none}
+      #gameShell.fs-on .badge-row{top:96px}
+      /* all control buttons leave the board in fullscreen: pause / restart /
+         sound / stage select / exit are consolidated into the menu screen,
+         opened from the single small ⏸ button at the board's corner */
+      #gameShell.fs-on .controls-bar{display:none}
       .stage-banner{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:10px;padding:8px 11px;margin-bottom:10px;font-size:.84rem;font-weight:700;line-height:1.4}
       .stage-banner .prog{font-variant-numeric:tabular-nums;background:rgba(255,255,255,.16);padding:3px 9px;border-radius:99px;white-space:nowrap;font-size:.8rem}
       .stage-banner small{display:block;font-weight:600;opacity:.82;font-size:.72rem}
@@ -151,11 +164,60 @@
       .next-reward .pill{background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 9px;box-shadow:var(--shadow-sm)}
       .next-reward .pill b{color:var(--gold);font-variant-numeric:tabular-nums}
       .next-reward .pill.skin b{color:var(--accent-dark)}
-      #gameShell.fs-on .next-reward{position:relative;z-index:5;margin:0 10px 6px;flex:none;color:rgba(255,255,255,.85)}
-      #gameShell.fs-on .next-reward .pill{background:rgba(8,18,10,.55);border-color:rgba(255,255,255,.18);color:#fff;box-shadow:none;backdrop-filter:blur(3px)}
+      /* next-reward pills are hidden on the fullscreen board (too much text
+         over the play area) — they are shown inside the menu screen instead */
+      #gameShell.fs-on .next-reward{display:none}
       /* first-play hint only (tutorial in the game itself, not long text) */
       .play-hint{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);z-index:3;background:rgba(8,18,10,.72);color:#fff;font-weight:800;font-size:.92rem;padding:9px 16px;border-radius:99px;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap;animation:hintNudge 1.1s ease-in-out infinite}
       .play-hint.show{opacity:1}
+      /* menu button: one small translucent circle at the board corner,
+         fullscreen only (outside fullscreen the normal controls bar is used) */
+      .menu-btn{display:none;position:absolute;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:6;width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(10,22,13,.55);color:#fff;font-size:1.02rem;backdrop-filter:blur(3px);align-items:center;justify-content:center;cursor:pointer;padding:0}
+      #gameShell.fs-on .menu-btn{display:flex}
+      /* launcher fire button: sits on the board ONLY while a bomb is held.
+         It lives inside the board wrap, so it shows in both normal and
+         fullscreen layouts, stacked above the ⏸ menu button. */
+      .fire-btn{position:absolute;right:10px;bottom:calc(64px + env(safe-area-inset-bottom));z-index:6;min-width:98px;min-height:54px;border-radius:999px;border:1.5px solid rgba(255,183,110,.85);background:rgba(122,45,6,.8);color:#ffe1b0;font-weight:800;font-size:1.02rem;letter-spacing:.03em;backdrop-filter:blur(3px);cursor:pointer;padding:8px 18px;box-shadow:0 8px 20px rgba(0,0,0,.42)}
+      .fire-btn:active{transform:scale(.95)}
+      /* menu screen: everything that used to crowd the fullscreen board —
+         detailed progress, next rewards, and all control buttons — lives here */
+      .menu-overlay{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(7,13,8,.84);backdrop-filter:blur(3px);color:#f2f7f0;text-align:center;padding:18px;overflow-y:auto}
+      .menu-overlay.hidden{display:none}
+      .menu-overlay h3{font-size:1.3rem;margin:0;font-weight:800}
+      .menu-overlay .menu-score{font-size:.86rem;color:#ffe9a8;font-weight:700;margin:0}
+      .menu-overlay .menu-next{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;font-size:.72rem;font-weight:700;color:rgba(255,255,255,.85)}
+      .menu-overlay .menu-next .pill{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:99px;padding:3px 9px}
+      .menu-overlay .menu-next .pill b{color:var(--gold)}
+      .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:350px}
+      .menu-grid .btn{padding:11px 10px;font-size:.94rem;min-height:2.7rem}
+      .menu-grid .btn.wide{grid-column:1/-1}
+      .menu-legend{font-size:.74rem;color:#cfe3cb;line-height:1.75;margin:0;max-width:36em}
+      /* fullscreen-only: there is no non-fullscreen screen to exit to */
+      #exitFsBtn,#menuExitBtn{display:none !important}
+      /* menu opens at the top and scrolls, so expanded panels never clip */
+      .menu-overlay{justify-content:flex-start}
+      .menu-overlay>h3{margin-top:auto}
+      .menu-overlay>.menu-panel:last-child{margin-bottom:auto}
+      /* missions & settings live inside the menu as expandable panels */
+      .menu-panel{width:100%;max-width:560px;text-align:left;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:10px 12px;flex:none}
+      .menu-panel summary{cursor:pointer;font-weight:800;font-size:.92rem;color:#fff;padding:2px 0;list-style-position:inside}
+      .menu-panel .group{margin-top:10px;background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.18);box-shadow:none;color:#f2f7f0}
+      .menu-panel .group h2{color:rgba(255,255,255,.75)}
+      .menu-panel .group:first-of-type{margin-top:8px}
+      .menu-panel .mission{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#f2f7f0}
+      .menu-panel .mission .box{background:transparent;border-color:rgba(255,255,255,.4)}
+      .menu-panel .mission .prog{color:rgba(255,255,255,.75)}
+      .menu-panel .mission.done{background:rgba(69,199,102,.18);border-color:var(--accent)}
+      .menu-panel .mission.done .prog{color:#7ee2a0}
+      .menu-panel .session-line{color:rgba(255,255,255,.75)}
+      .menu-panel .session-line b{color:#fff}
+      .menu-panel .stage-card{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#f2f7f0}
+      .menu-panel .stage-card small{color:rgba(255,255,255,.72)}
+      .menu-panel .stage-card[aria-pressed="true"]{background:rgba(69,199,102,.2)}
+      .menu-panel .stage-card .clear-mark{color:#7ee2a0}
+      .menu-panel .chip{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.25);color:#f2f7f0}
+      .menu-panel .chip small{color:rgba(255,255,255,.7)}
+      .menu-panel .mode-desc{color:rgba(255,255,255,.75)}
       @keyframes hintNudge{0%,100%{transform:translateX(-50%)}50%{transform:translateX(calc(-50% + 14px))}}
       /* Sakurai: retry must be fast — the retry button is the biggest thing on the game-over screen */
       .btn.big-retry{font-size:1.22rem;padding:16px 38px;min-height:3.7rem;border-radius:999px;box-shadow:0 10px 26px rgba(20,114,50,.45)}
@@ -163,14 +225,10 @@
       @media(prefers-reduced-motion:reduce){.shake{animation:none}.fever-fill{transition:none}.play-hint{animation:none}}
     </style>
   </head>
-  <body>
+  <body class="locked fs-locked">
     <div class="wrap">
-      <header>
-        <div class="title-row"><h1>🐍 スネークゲーム <span class="dx">DELUXE</span></h1></div>
-        <p class="sub"><b>画面をなぞって、りんごを食べる。</b>それだけ。コンボとフィーバーは遊びながら覚えられます。</p>
-      </header>
 
-      <div id="gameShell">
+      <div id="gameShell" class="fs-on">
       <div class="stage-banner" id="stageBanner"><div><span id="stageName">ステージ1 草原</span><small id="stageGoal">りんご 5個でクリア → 次のステージ解放</small></div><span class="prog" id="stageProg">🍎 0 / 5</span></div>
       <div class="scorebar" aria-label="ステータス">
         <div class="stat score"><div class="label">スコア</div><div class="value" id="score">0</div></div>
@@ -186,7 +244,9 @@
         <canvas id="board" width="640" height="640" aria-label="スネークゲームの盤面"></canvas>
         <div class="badge-row">
           <span class="badge" id="shieldBadge">🛡️ シールド</span>
+          <span class="badge" id="launcherBadge">🚀 ランチャー保持中</span>
           <span class="badge" id="slowBadge">🐢 スロー中</span>
+          <span class="badge" id="shedBadge">🐍 脱皮中</span>
         </div>
         <div class="toast" id="toast" role="status"></div>
         <div class="play-hint" id="playHint">👆 画面をなぞって操作</div>
@@ -203,6 +263,60 @@
             <button class="btn ghost hidden" id="exitFsBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">全画面を終了</button>
           </div>
         </div>
+        <button class="menu-btn" id="menuBtn" type="button" aria-label="メニューを開く">⏸</button>
+        <button class="fire-btn hidden" id="fireBtn" type="button" aria-label="ボムを発射する">💣 発射</button>
+        <div class="menu-overlay hidden" id="gameMenu" role="dialog" aria-label="ゲームメニュー">
+          <h3>⏸ メニュー（一時停止中）</h3>
+          <p class="menu-score" id="menuScore">スコア 0 点</p>
+          <div class="menu-next" id="menuNext"></div>
+          <div class="menu-grid">
+            <button class="btn wide" id="menuResumeBtn" type="button">▶ 再開する</button>
+            <button class="btn ghost" id="menuRestartBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">↺ 最初から</button>
+            <button class="btn ghost" id="menuSoundBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🔊 音 ON</button>
+            <button class="btn ghost" id="menuStageBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🎯 ステージ・設定へ</button>
+            <button class="btn ghost" id="menuExitBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">⛶ 全画面を終了</button>
+          </div>
+        <details class="menu-panel" id="missionsPanel">
+          <summary>🎯 ミッション（全20）― 展開して確認</summary>
+    <section class="group" aria-label="ミッション">
+      <h2>ミッション（全20） <span>達成ごとに +30点ボーナス</span></h2>
+      <ul class="missions" id="missions"></ul>
+      <p class="session-line" id="sessionLine">このセッション： 0 ゲーム ／ 累計りんご 0 個</p>
+    </section>
+        </details>
+        <details class="menu-panel" id="settingsPanel">
+          <summary>🎯 ステージ・モード・設定 ― 展開して変更</summary>
+    <section class="group" aria-label="ステージ選択">
+      <h2>ステージ <span id="stageHint">クリアで次が解放されます</span></h2>
+      <div class="stage-grid" id="stageGrid"></div>
+      <p class="mode-desc" id="stageDesc">ステージ1：障害物なし。りんご5個でクリア。</p>
+    </section>
+    <section class="group" aria-label="モード選択">
+      <h2>モード <span>途中で変えると次のゲームから適用</span></h2>
+      <div class="chips" role="group" aria-label="モード">
+        <button class="chip mode-chip" type="button" data-mode="classic" aria-pressed="true">クラシック<small>壁はすり抜ける</small></button>
+        <button class="chip mode-chip" type="button" data-mode="wrap" aria-pressed="false">ラップ<small>壁をすり抜ける</small></button>
+        <button class="chip mode-chip" type="button" data-mode="chaos" aria-pressed="false">カオス<small>壁すり抜け＋障害物が増殖</small></button>
+      </div>
+      <p class="mode-desc" id="modeDesc">壁はすり抜けて反対側から出てくる。自分の体と岩に当たったら終わり。迷ったらこれ。</p>
+    </section>
+    <section class="group" aria-label="スピードとスキン">
+      <h2>スピード＆スキン <span id="skinHint">スキンは累計りんごで解放</span></h2>
+      <div class="chips" role="group" aria-label="スピード" style="margin-bottom:9px">
+        <button class="chip speed-chip" type="button" data-speed="slow" aria-pressed="false">ゆっくり</button>
+        <button class="chip speed-chip" type="button" data-speed="normal" aria-pressed="true">ふつう</button>
+        <button class="chip speed-chip" type="button" data-speed="fast" aria-pressed="false">はやい</button>
+        <button class="chip speed-chip" type="button" data-speed="insane" aria-pressed="false">激ムズ ⚡</button>
+      </div>
+      <div class="chips" role="group" aria-label="スキン" id="skinRow">
+        <button class="chip skin-chip" type="button" data-skin="green" aria-pressed="true"><span class="dot" style="background:#35b356"></span>みどり</button>
+        <button class="chip skin-chip" type="button" data-skin="blue" aria-pressed="false" disabled><span class="dot" style="background:#2f8fe8"></span>あお 🔒10個</button>
+        <button class="chip skin-chip" type="button" data-skin="red" aria-pressed="false" disabled><span class="dot" style="background:#e8483f"></span>あか 🔒25個</button>
+        <button class="chip skin-chip" type="button" data-skin="gold" aria-pressed="false" disabled><span class="dot" style="background:#e8a100"></span>きん 🔒50個</button>
+      </div>
+    </section>
+        </details>
+        </div>
       </div>
 
       <div class="controls-bar">
@@ -214,63 +328,10 @@
 
       </div><!-- /gameShell -->
 
-      <section class="group" aria-label="ステージ選択">
-        <h2>ステージ <span id="stageHint">クリアで次が解放されます</span></h2>
-        <div class="stage-grid" id="stageGrid"></div>
-        <p class="mode-desc" id="stageDesc">ステージ1：障害物なし。りんご5個でクリア。</p>
-        <p class="mode-desc" style="margin-top:6px">🕹️ <b>自由移動（画面なぞり操作）：</b>ヘビはマス目に縛られません。プレイ中は画面のどこをなぞっても、その方向へ<b>斜め・カーブ</b>まで思い通りの角度で滑らかに進みます。指を離すとそのまま直進します。方向キーではヘビは動きません。</p>
-      </section>
 
-      <section class="group" aria-label="モード選択">
-        <h2>モード <span>途中で変えると次のゲームから適用</span></h2>
-        <div class="chips" role="group" aria-label="モード">
-          <button class="chip mode-chip" type="button" data-mode="classic" aria-pressed="true">クラシック<small>壁はすり抜ける</small></button>
-          <button class="chip mode-chip" type="button" data-mode="wrap" aria-pressed="false">ラップ<small>壁をすり抜ける</small></button>
-          <button class="chip mode-chip" type="button" data-mode="chaos" aria-pressed="false">カオス<small>壁すり抜け＋障害物が増殖</small></button>
-        </div>
-        <p class="mode-desc" id="modeDesc">壁はすり抜けて反対側から出てくる。自分の体と岩に当たったら終わり。迷ったらこれ。</p>
-      </section>
 
-      <section class="group" aria-label="スピードとスキン">
-        <h2>スピード＆スキン <span id="skinHint">スキンは累計りんごで解放</span></h2>
-        <div class="chips" role="group" aria-label="スピード" style="margin-bottom:9px">
-          <button class="chip speed-chip" type="button" data-speed="slow" aria-pressed="false">ゆっくり</button>
-          <button class="chip speed-chip" type="button" data-speed="normal" aria-pressed="true">ふつう</button>
-          <button class="chip speed-chip" type="button" data-speed="fast" aria-pressed="false">はやい</button>
-          <button class="chip speed-chip" type="button" data-speed="insane" aria-pressed="false">激ムズ ⚡</button>
-        </div>
-        <div class="chips" role="group" aria-label="スキン" id="skinRow">
-          <button class="chip skin-chip" type="button" data-skin="green" aria-pressed="true"><span class="dot" style="background:#35b356"></span>みどり</button>
-          <button class="chip skin-chip" type="button" data-skin="blue" aria-pressed="false" disabled><span class="dot" style="background:#2f8fe8"></span>あお 🔒10個</button>
-          <button class="chip skin-chip" type="button" data-skin="red" aria-pressed="false" disabled><span class="dot" style="background:#e8483f"></span>あか 🔒25個</button>
-          <button class="chip skin-chip" type="button" data-skin="gold" aria-pressed="false" disabled><span class="dot" style="background:#e8a100"></span>きん 🔒50個</button>
-        </div>
-      </section>
 
-      <section class="group" aria-label="ミッション">
-        <h2>ミッション（全20） <span>達成ごとに +30点ボーナス</span></h2>
-        <ul class="missions" id="missions"></ul>
-        <p class="session-line" id="sessionLine">このセッション： 0 ゲーム ／ 累計りんご 0 個</p>
-      </section>
 
-      <section class="howto">
-        <h2>遊び方と稼ぎ方</h2>
-        <ul>
-          <li><b>操作（画面なぞり）：</b>画面のどこをなぞっても、その方向にヘビがヌルヌル曲がります（斜めもカーブもOK）。なぞる指の動きに合わせて角度が変わるので、細かい方向調整もできます。指を離すとそのまま直進します。方向キー／WASDではヘビは動きません。<kbd>Space</kbd> 一時停止、<kbd>Enter</kbd> リスタート</li>
-          <li><b>コンボ：</b>3.5秒以内に次を食べると継続。コンボ数だけボーナス加算（最大+20/個）</li>
-          <li><b>フィーバー：</b>コンボ5で8秒間ぜんぶ2倍＆少し加速。ここで金のりんごを取ると <b>+100点</b></li>
-          <li><span class="gold-txt">金のりんご +50点</span>（制限時間つき）／ <b>⭐スター +100点</b> ／ <b>🛡️シールド</b>＝1回だけ死なない ／ <b>🐢スロー</b>＝8秒ゆっくりに</li>
-          <li><b>壁：</b>画面端の壁にぶつかってもゲームオーバーにはなりません。すり抜けて反対側から出てきます（全モード共通）。ゲームオーバーになるのは自分の体と岩（障害物）に当たったときだけです</li>
-          <li><b>ステージ：</b>全10ステージ。目標のりんごを食べるとクリアで、次のステージが解放されます。全画面で遊ぶのでスワイプで画面がスクロールしません</li>
-          <li><b>なめらか移動：</b>ステージ自体はブロック状の壁でも、ヘビ本体は座標を連続計算する別レイヤーで動くので、ブロックに縛られず自由な角度で移動できます</li>
-          <li><b>レベル：</b>りんご5個ごとにLvアップして加速。カオスではLvごとに障害物が増えます</li>
-          <li><b>ランク：</b>ゲームオーバー時のスコアで C→B→A→S→SS 評価。SSは800点〜。全長はメートル換算でも表示されます</li>
-          <li><b>手応え（桜井式）：</b>食べた瞬間に一瞬止まるヒットストップ＋衝撃波＋画面の揺れで手応えを作っています。コンボが伸びるほど食べる音の音程も上がります</li>
-          <li><b>リスクとリターン：</b>金のりんごは岩や自分の体の近く＝危ない場所に出やすい。危ないほど大きなご褒美、がこのゲームの駆け引きです。りんごの取得判定は見た目より少し広めです</li>
-          <li><b>次のご褒美：</b>プレイ中は常に「次のミッション／スキン解放まであと○」が盤面の上に表示されます</li>
-          <li><b>難易度：</b>ステージは一直線に難しくならず、難所と平地（息抜き）が交互に来ます。序盤の速度も控えめです</li>
-        </ul>
-      </section>
     </div>
 
     <script>
@@ -300,7 +361,14 @@
           nextStageBtn=document.getElementById("nextStageBtn"), exitFsBtn=document.getElementById("exitFsBtn"),
           fsBtn=document.getElementById("fsBtn"),
           nextRewardEl=document.getElementById("nextReward"), playHintEl=document.getElementById("playHint"),
-          ovMeters=document.getElementById("ovMeters");
+          ovMeters=document.getElementById("ovMeters"),
+          menuBtn=document.getElementById("menuBtn"), gameMenu=document.getElementById("gameMenu"),
+          menuScoreEl=document.getElementById("menuScore"), menuNextEl=document.getElementById("menuNext"),
+          menuResumeBtn=document.getElementById("menuResumeBtn"), menuRestartBtn=document.getElementById("menuRestartBtn"),
+          menuSoundBtn=document.getElementById("menuSoundBtn"), menuStageBtn=document.getElementById("menuStageBtn"),
+          menuExitBtn=document.getElementById("menuExitBtn"),
+          fireBtn=document.getElementById("fireBtn"), launcherBadge=document.getElementById("launcherBadge"),
+          shedBadge=document.getElementById("shedBadge");
 
       var SPEEDS={slow:165,normal:118,fast:82,insane:62};
       var MODES={
@@ -328,6 +396,14 @@
       /* stage & extended mission trackers */
       var currentStage=0, highestUnlocked=0, clearedStages={};
       var starEaten=0, shieldGot=0, slowGot=0, feverCount=0;
+      /* ---- launcher state: the 🚀 launcher item puts a bomb in the snake's
+         mouth (launcher=true) until the fire button launches it, another
+         item is taken, or the snake runs into a block and it explodes ---- */
+      var launcher=false, bombShot=null;
+      /* ---- shed (🐍 脱皮) state: while active, the last SHED_SEGS tail
+         segments are transparent and have no self-collision ---- */
+      var shedUntil=0, blockGraceUntil=0;
+      var SHED_DUR=8000, SHED_SEGS=5;
       /* ---- free (continuous) movement state: NOT grid-locked ---- */
       var hx=9.5, hy=10.5, angle=0, targetAngle=0, segCount=3, trail=[];
       var pointerTarget=null, pointerDown=false, keysDown={}, selfGraceUntil=0, lastFrameTs=0;
@@ -335,6 +411,9 @@
          Stage tempo then alternates hard / relief instead of a straight ramp —
          see STAGES[].sp per stage. */
       var FREE_SPEEDS={slow:4.4,normal:6.2,fast:9.4,insane:12.6};
+      /* pickup time limits: gold apples vanish after 7s, every item
+         (⭐ star / 🛡️ shield / 🐢 slow / 🚀 launcher / 🐍 shed) after 9s */
+      var GOLD_TTL=7000, POWER_TTL=9000;
       /* ---- Sakurai feel state: hit-stop / flash / scaled shake / hit marks / confetti ---- */
       var hitstopUntil=0, flashUntil=0, flashDur=1, flashColor="255,255,255", flashMax=0.35;
       var shakeMag=0, shakeStart=0, shakeDur=0, hitRings=[], confetti=[], hintShown=false;
@@ -485,6 +564,8 @@
       var sLevel=function(){tone(660,660,.07,"square",.06);tone(990,990,.12,"square",.06,.07);};
       var sFever=function(){tone(520,1040,.22,"sawtooth",.05);tone(780,1560,.22,"sawtooth",.04,.05);};
       var sShieldBreak=function(){tone(300,90,.25,"sawtooth",.09);};
+      var sBomb=function(){tone(170,38,.38,"sawtooth",.13);tone(95,30,.42,"square",.1,.02);tone(1200,300,.12,"square",.05,.01);};
+      var sLaunch=function(){tone(280,940,.16,"square",.07);tone(150,70,.1,"square",.04,.02);};
       var sOver=function(){tone(440,110,.5,"triangle",.09);};
       function vibrate(ms){ if(navigator.vibrate){ try{navigator.vibrate(ms);}catch(e){} } }
 
@@ -532,16 +613,48 @@
         var chance = modeKey==="chaos"?0.34:0.24;
         if(force||Math.random()<chance){
           var c=(Math.random()<0.72?dangerCell():null)||randomEmptyCell();
-          if(c){gold=c; goldExpires=now()+7000;}
+          if(c){gold=c; goldExpires=now()+GOLD_TTL;}
         }
       }
-      var POWER_TYPES=["star","shield","slow"];
+      var POWER_TYPES=["star","launcher","shield","slow","shed"];
       var powerIdx=0;
+      /* The launcher appears ONLY near obstacle blocks: a launcher far from
+         any rock would be pointless, so its spawn cells hug the rocks
+         (within 2 cells of a block, never right on the snake's head). */
+      function bombSpawnCell(){
+        if(!obstacles.length) return null;
+        var occ={};
+        (snake||[]).forEach(function(s){occ[key(Math.floor(s.x),Math.floor(s.y))]=true;});
+        obstacles.forEach(function(o){occ[key(o.x,o.y)]=true;});
+        if(food)occ[key(food.x,food.y)]=true;
+        if(gold)occ[key(gold.x,gold.y)]=true;
+        if(power)occ[key(power.x,power.y)]=true;
+        var cand=[], seen={};
+        obstacles.forEach(function(o){
+          for(var dx=-2;dx<=2;dx++)for(var dy=-2;dy<=2;dy++){
+            var x=o.x+dx, y=o.y+dy;
+            if(x<0||x>=COLS||y<0||y>=ROWS) continue;
+            var k=key(x,y);
+            if(occ[k]||seen[k]) continue;
+            if(Math.hypot(x+0.5-hx,y+0.5-hy)<2.2) continue;
+            seen[k]=true; cand.push({x:x,y:y});
+          }
+        });
+        if(!cand.length) return null;
+        return cand[Math.floor(Math.random()*cand.length)];
+      }
       function maybeSpawnPower(t){
         if(power||t<powerNextAt) return;
-        var c=randomEmptyCell(); if(!c) return;
-        var type=POWER_TYPES[powerIdx%POWER_TYPES.length]; powerIdx++;
-        power={x:c.x,y:c.y,type:type,expires:t+9000};
+        var type=POWER_TYPES[powerIdx%POWER_TYPES.length];
+        var c;
+        if(type==="launcher"){
+          c=bombSpawnCell();
+          if(!c){ powerIdx++; powerNextAt=t+4000; return; } /* no rocks to hug: skip ahead to the next item */
+        } else {
+          c=randomEmptyCell(); if(!c) return;
+        }
+        powerIdx++;
+        power={x:c.x,y:c.y,type:type,expires:t+POWER_TTL};
       }
       function addObstacle(){
         var c=randomEmptyCell(); if(c) obstacles.push(c);
@@ -557,6 +670,11 @@
       }
       function floatText(cell,text,color){
         floats.push({x:cell.x,y:cell.y,text:text,color:color||"#fff",life:1});
+      }
+      /* an item that times out pops visibly, so the player knows it expired */
+      function expirePoof(cell){
+        burst(cell,"#9aa79a",8);
+        floatText(cell,"消えた","rgba(255,255,255,.85)");
       }
 
       /* ---------- stages & fullscreen ---------- */
@@ -575,7 +693,7 @@
           b.type="button"; b.className="stage-card"; b.setAttribute("aria-pressed",idx===currentStage?"true":"false");
           b.disabled=idx>highestUnlocked;
           b.innerHTML="<b><span>ステージ"+(idx+1)+" "+st.name+"</span>"+(clearedStages[idx]?"<span class='clear-mark'>✓ クリア</span>":(idx>highestUnlocked?"<span>🔒</span>":""))+"</b><small>目標：りんご"+st.target+"個 ／ "+st.tempo+" ／ "+st.desc+"</small>";
-          b.addEventListener("click",function(){ currentStage=idx; if(state!=="playing"){ resetGame(); state="idle"; } renderStages(); updateStageBanner(); toast("ステージ"+(idx+1)+"「"+st.name+"」を選択"); });
+          b.addEventListener("click",function(){ currentStage=idx; renderStages(); updateStageBanner(); toast("ステージ"+(idx+1)+"「"+st.name+"」を選択"); if(state==="paused"){ startGame(); } else if(state!=="playing"){ resetGame(); state="idle"; } });
           stageGrid.appendChild(b);
         });
         updateStageBanner();
@@ -628,7 +746,7 @@
         if(document.fullscreenElement&&document.exitFullscreen){ document.exitFullscreen().catch(function(){}); }
       }
       function stageClear(){
-        state="clear"; lastStep=now();
+        state="clear"; lastStep=now(); bombShot=null; launcher=false;
         /* praise the player (Sakurai): confetti + flash + a beat of hit-stop */
         spawnConfetti(); triggerFlash(255,255,255,220,0.3); triggerShake(4,240); triggerHitstop(120);
         clearedStages[currentStage]=true;
@@ -663,6 +781,7 @@
         obstacles=[]; score=0; level=1; apples=0; goldEaten=0;
         combo=0; maxCombo=0; lastEatAt=0;
         shield=false; slowUntil=0; feverUntil=0;
+        launcher=false; bombShot=null; shedUntil=0; blockGraceUntil=0;
         gold=null; power=null; powerNextAt=now()+9000;
         particles=[]; floats=[];
         missionDone={};
@@ -706,6 +825,10 @@
           nextRewardEl.innerHTML=html;
         }
         shieldBadge.classList.toggle("on",!!shield);
+        if(launcherBadge) launcherBadge.classList.toggle("on",!!launcher);
+        if(shedBadge) shedBadge.classList.toggle("on",now()<shedUntil);
+        /* the fire button exists ONLY while the launcher is active */
+        if(fireBtn) fireBtn.classList.toggle("hidden",!launcher);
         slowBadge.classList.toggle("on",now()<slowUntil);
         boardWrap.classList.toggle("fever",isFever());
         updateStageBanner();
@@ -746,7 +869,7 @@
       /* ---------- core step ---------- */
       function gameOver(){
         if(state==="over"||state==="clear") return;
-        state="over"; lastStep=now(); vibrate([60,40,120]); sOver();
+        state="over"; lastStep=now(); bombShot=null; launcher=false; vibrate([60,40,120]); sOver();
         /* Sakurai: death is short and flashy — hit-stop + flash + big shake,
            then the (big) retry button is up almost immediately. */
         triggerHitstop(320); triggerFlash(255,70,50,300,0.42); triggerShake(11,380);
@@ -857,6 +980,72 @@
         checkMissions();
         updateHud();
       }
+      /* ---------- launcher: fire the held bomb from the mouth ---------- */
+      function fireBomb(){
+        if(!launcher||bombShot||state!=="playing") return;
+        launcher=false; /* firing ends the launcher */
+        bombShot={x:hx+Math.cos(angle)*0.75, y:hy+Math.sin(angle)*0.75, vx:Math.cos(angle), vy:Math.sin(angle), dist:0};
+        sLaunch(); vibrate(20);
+        floatText({x:Math.floor(hx),y:Math.floor(hy)},"💣 発射！","#ffb37a");
+        updateHud();
+      }
+      /* Launcher state + block contact: the bomb held in the mouth explodes
+         and destroys 2 cells — the block that was hit plus the nearest
+         other block. The snake survives and the launcher ends. */
+      function explodeMouthBomb(oi,t){
+        var hit=obstacles[oi];
+        var targets=[hit], bestD=1e9, second=null;
+        for(var i=0;i<obstacles.length;i++){
+          if(i===oi) continue;
+          var o=obstacles[i], d=Math.hypot(o.x-hit.x,o.y-hit.y);
+          if(d<bestD){ bestD=d; second=o; }
+        }
+        if(second) targets.push(second);
+        targets.forEach(function(dc){
+          var ix=obstacles.indexOf(dc); if(ix>=0) obstacles.splice(ix,1);
+          burst(dc,"#b9c4b2",12); burst(dc,"#ff8a3c",7);
+        });
+        var pts=targets.length*20*(isFever()?2:1); score+=pts;
+        spawnHitMark(hit,"#ff8a3c",true);
+        triggerHitstop(130); triggerShake(8.5,260); triggerFlash(255,140,40,150,0.25);
+        sBomb(); vibrate([30,30,60]);
+        floatText(hit,"💥 "+targets.length+"マス破壊 +"+pts,"#ffb37a");
+        toast("💥 口のボムが爆発！ ブロックを "+targets.length+" マス破壊（+"+pts+"点）");
+        launcher=false;
+        blockGraceUntil=t+700; /* brief grace so the blast zone doesn't chain-collide */
+        selfGraceUntil=t+500;
+        updateHud();
+      }
+      function explodeBombAt(ex,ey){
+        var destroyed=[];
+        for(var i=obstacles.length-1;i>=0;i--){
+          var o=obstacles[i];
+          if(Math.hypot(o.x+0.5-ex,o.y+0.5-ey)<=1.8){ destroyed.push(o); obstacles.splice(i,1); }
+        }
+        var pts=destroyed.length*20*(isFever()?2:1); score+=pts;
+        destroyed.forEach(function(dc){ burst(dc,"#b9c4b2",12); burst(dc,"#ff8a3c",7); });
+        burst({x:Math.round(ex-0.5),y:Math.round(ey-0.5)},"#ffd23c",16);
+        spawnHitMark({x:Math.floor(ex),y:Math.floor(ey)},"#ff8a3c",true);
+        triggerHitstop(130); triggerShake(8.5,260); triggerFlash(255,140,40,150,0.25);
+        sBomb(); vibrate([30,30,60]);
+        if(destroyed.length){ floatText({x:Math.floor(ex),y:Math.floor(ey)},"💥 "+destroyed.length+"個破壊 +"+pts,"#ffb37a"); toast("💥 ボム命中！ 岩を "+destroyed.length+" 個 破壊（+"+pts+"点）"); }
+        updateHud();
+      }
+      function updateBombShot(dt){
+        if(!bombShot) return;
+        var sp=15*dt, steps=Math.max(1,Math.ceil(sp/0.18)), inc=sp/steps;
+        for(var s=0;s<steps;s++){
+          bombShot.x+=bombShot.vx*inc; bombShot.y+=bombShot.vy*inc; bombShot.dist+=inc;
+          bombShot.x=(bombShot.x+COLS)%COLS; bombShot.y=(bombShot.y+ROWS)%ROWS;
+          /* obstacle hit? point vs block with a small radius, sub-stepped so it can't tunnel through a rock */
+          for(var i=0;i<obstacles.length;i++){ var o=obstacles[i];
+            var nx=Math.max(o.x,Math.min(bombShot.x,o.x+1)), ny=Math.max(o.y,Math.min(bombShot.y,o.y+1));
+            if(Math.hypot(bombShot.x-nx,bombShot.y-ny)<0.30){ var ex=bombShot.x, ey=bombShot.y; bombShot=null; explodeBombAt(ex,ey); return; }
+          }
+          if(bombShot.dist>10){ burst({x:Math.round(bombShot.x-0.5),y:Math.round(bombShot.y-0.5)},"#9aa79a",8); floatText({x:Math.floor(bombShot.x),y:Math.floor(bombShot.y)},"届かなかった","rgba(255,255,255,.85)"); bombShot=null; return; } /* out of range: fizzles */
+        }
+        if(Math.random()<0.55) burst({x:bombShot.x-0.5,y:bombShot.y-0.5},"#c9cdc9",1); /* smoke trail */
+      }
       /* ---------- continuous movement update (replaces grid step) ---------- */
       function distToCell(cx,cy){ return Math.hypot(hx-(cx+0.5), hy-(cy+0.5)); }
       function hitObstacle(){
@@ -899,16 +1088,20 @@
           var maxPts=420+segCount*40; if(trail.length>maxPts) trail.length=maxPts;
         }
         syncSnakeFromTrail();
-        /* obstacles */
-        var oi=hitObstacle();
+        /* obstacles: in launcher state the mouth-held bomb explodes on
+           contact and destroys 2 cells instead of ending the run */
+        var oi=(t<blockGraceUntil)?-1:hitObstacle();
         if(oi>=0){
-          if(shield){ var oc=obstacles[oi]; obstacles.splice(oi,1); shield=false; sShieldBreak(); toast("🛡️ シールドで岩を粉砕！"); burst(oc,"#b9c4b2",16); selfGraceUntil=t+600; }
+          if(launcher){ explodeMouthBomb(oi,t); }
+          else if(shield){ var oc=obstacles[oi]; obstacles.splice(oi,1); shield=false; sShieldBreak(); toast("🛡️ シールドで岩を粉砕！"); burst(oc,"#b9c4b2",16); selfGraceUntil=t+600; }
           else return gameOver();
         }
-        /* self collision */
+        /* self collision: while 🐍 脱皮 is active, the last 5 tail segments
+           (counted from the rear) are ghost — no collision against them */
         if(t>selfGraceUntil && segCount>=8){
           var body=resampleBody();
-          for(var si=6;si<body.length;si++){ if(Math.hypot(hx-body[si].x,hy-body[si].y)<0.46){
+          var shedOn=t<shedUntil;
+          for(var si=6;si<body.length;si++){ if(shedOn&&si>=body.length-SHED_SEGS) continue; if(Math.hypot(hx-body[si].x,hy-body[si].y)<0.46){
             if(shield){ shield=false; sShieldBreak(); vibrate(80); toast("🛡️ シールド発動！体を短くして回避"); segCount=Math.max(3,segCount-4); rebuildTrailBehind(); }
             else return gameOver();
             break;
@@ -933,13 +1126,37 @@
         }
         if(power&&distToCell(power.x,power.y)<0.9){
           var pc=power;
+          /* taking any OTHER item ends the launcher — the held bomb is lost */
+          if(pc.type!=="launcher"&&launcher){ launcher=false; floatText({x:Math.floor(hx),y:Math.floor(hy)},"ランチャー終了","rgba(255,255,255,.85)"); }
           if(pc.type==="star"){ starEaten++; segCount++; var spp=100*(fever?2:1); score+=spp; spawnHitMark(pc,"#ffe58a",true); triggerHitstop(135); triggerShake(5.5,200); triggerFlash(255,232,138,130,0.2); floatText(pc,"+"+spp+" ★","#ffe58a"); }
           if(pc.type==="shield"){ shieldGot++; shield=true; spawnHitMark(pc,"#7db8ff",false); triggerHitstop(70); floatText(pc,"🛡️ GET","#a9ccff"); toast("🛡️ シールド装備！ 1回だけ死なない"); }
           if(pc.type==="slow"){ slowGot++; slowUntil=t+8000; spawnHitMark(pc,"#7fe6d8",false); triggerHitstop(70); floatText(pc,"🐢 SLOW","#a9f0e6"); toast("🐢 8秒間スローに"); }
+          if(pc.type==="shed"){
+            /* 🐍 脱皮: for SHED_DUR, the last 5 tail segments turn
+               transparent and stop colliding with the head */
+            shedUntil=t+SHED_DUR;
+            spawnHitMark(pc,"#8be26b",false); triggerHitstop(70);
+            floatText(pc,"🐍 脱皮！","#b9f2a0");
+            toast("🐍 脱皮！ "+(SHED_DUR/1000)+"秒間、尻尾の後ろ5マスは透明で当たらない");
+            vibrate(25);
+          }
+          if(pc.type==="launcher"){
+            /* 🚀 launcher pickup: a bomb is held in the mouth, not exploded
+               on the spot. The dedicated fire button appears on the board;
+               firing it, taking another item, or running into a block
+               (mouth-bomb explosion, 2 cells destroyed) ends the launcher. */
+            launcher=true;
+            spawnHitMark(pc,"#ff8a3c",false); triggerHitstop(70); triggerShake(3,140);
+            floatText(pc,"🚀 ランチャー GET","#ffb37a");
+            toast("🚀 ランチャー取得！ ボムを咥えた。発射ボタンか、ブロックに当てて爆発");
+            vibrate(25);
+          }
           sPower(); power=null; powerNextAt=t+11000+Math.random()*6000;
+          updateHud(); /* launcher button / badges must follow the pickup immediately */
         }
-        if(gold&&t>goldExpires) gold=null;
-        if(power&&t>power.expires){ power=null; powerNextAt=t+6000; }
+        updateBombShot(dt);
+        if(gold&&t>goldExpires){ expirePoof(gold); gold=null; }
+        if(power&&t>power.expires){ expirePoof(power); power=null; powerNextAt=t+6000; }
         if(lastEatAt&&t-lastEatAt>3500&&combo>0) combo=0;
         maybeSpawnPower(t);
         checkMissions();
@@ -983,6 +1200,18 @@
         if(shakeDur&&timestamp-shakeStart<shakeDur){ var sr=1-(timestamp-shakeStart)/shakeDur; var sm=shakeMag*sr*sr; shX+=(Math.random()-0.5)*2*sm*(shakeMag>6?1:0.35); shY+=(Math.random()-0.5)*2*sm; }
         ctx.save(); ctx.translate(ox+shX,oy+shY);
 
+        /* wall boundary: walls wrap through, so the edge of the field is
+           marked with a dashed line the player can read at a glance */
+        ctx.save();
+        ctx.lineWidth=Math.max(2,cw*0.09);
+        ctx.setLineDash([cw*0.42,cw*0.3]);
+        ctx.strokeStyle="rgba(0,0,0,.5)";
+        ctx.strokeRect(ctx.lineWidth/2,ctx.lineWidth/2,COLS*cw-ctx.lineWidth,ROWS*ch-ctx.lineWidth);
+        ctx.lineDashOffset=cw*0.36;
+        ctx.strokeStyle="rgba(255,255,255,.75)";
+        ctx.strokeRect(ctx.lineWidth/2,ctx.lineWidth/2,COLS*cw-ctx.lineWidth,ROWS*ch-ctx.lineWidth);
+        ctx.restore();
+
         // obstacles
         obstacles.forEach(function(o){
           var ox=o.x*cw,oy=o.y*ch;
@@ -996,9 +1225,15 @@
           var pulse=1+Math.sin(timestamp/220+cell.x)*0.08;
           var r=Math.min(cw,ch)*0.34*pulse;
           if(isGold){
-            var remain=Math.max(0,(goldExpires-timestamp)/7000);
-            ctx.strokeStyle="rgba(255,201,60,.9)"; ctx.lineWidth=3;
+            var remain=Math.max(0,(goldExpires-timestamp)/GOLD_TTL);
+            ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.lineWidth=3;
+            ctx.beginPath(); ctx.arc(cx,cy,r+6,0,Math.PI*2); ctx.stroke();
+            ctx.strokeStyle="rgba(255,201,60,.95)"; ctx.lineWidth=3;
             ctx.beginPath(); ctx.arc(cx,cy,r+6,-Math.PI/2,-Math.PI/2+Math.PI*2*remain); ctx.stroke();
+            ctx.font="800 "+Math.floor(cw*0.34)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.6)";
+            var gsec=""+Math.max(1,Math.ceil((goldExpires-timestamp)/1000));
+            ctx.strokeText(gsec,cx+r+7,cy-r-6); ctx.fillStyle="#ffd964"; ctx.fillText(gsec,cx+r+7,cy-r-6);
             if(Math.floor(timestamp/160)%2===0){ ctx.fillStyle="rgba(255,230,140,.95)"; star(cx+r+7,cy-r-4,3.4); }
           }
           ctx.save();
@@ -1013,16 +1248,31 @@
         if(food) apple(food,colorCache.food,false);
         if(gold && !(goldExpires-timestamp<1200 && Math.floor(timestamp/120)%2===0)) apple(gold,"#f5b921",true);
 
-        // power item
+        // power item — every item (⭐ included) has a time limit: the ring
+        // around it is a countdown of the remaining seconds, the number is
+        // printed beside it, and under 2s left it blinks before vanishing
         if(power){
           var pcx=(power.x+0.5)*cw, pcy=(power.y+0.5)*ch;
           var bob=Math.sin(timestamp/260)*2.5;
-          var emoji= power.type==="star"?"⭐":power.type==="shield"?"🛡️":"🐢";
-          var ringC= power.type==="star"?"#ffe58a":power.type==="shield"?"#7db8ff":"#7fe6d8";
-          ctx.strokeStyle=ringC; ctx.lineWidth=2.5;
+          var emoji= power.type==="star"?"⭐":power.type==="shield"?"🛡️":power.type==="launcher"?"🚀":power.type==="shed"?"🐍":"🐢";
+          var ringC= power.type==="star"?"#ffe58a":power.type==="shield"?"#7db8ff":power.type==="launcher"?"#ff8a3c":power.type==="shed"?"#8be26b":"#7fe6d8";
+          var pRemain=power.expires-timestamp, pFrac=Math.max(0,pRemain/POWER_TTL);
+          var blinkOff= pRemain<2000 && Math.floor(timestamp/140)%2===0;
+          ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.lineWidth=2.5;
           ctx.beginPath(); ctx.arc(pcx,pcy+bob,cw*0.44,0,Math.PI*2); ctx.stroke();
-          ctx.font=Math.floor(cw*0.62)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
-          ctx.fillText(emoji,pcx,pcy+bob+1);
+          ctx.strokeStyle=ringC; ctx.lineWidth=3;
+          ctx.beginPath(); ctx.arc(pcx,pcy+bob,cw*0.44,-Math.PI/2,-Math.PI/2+Math.PI*2*pFrac); ctx.stroke();
+          if(!blinkOff){
+            ctx.font=Math.floor(cw*0.62)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.fillText(emoji,pcx,pcy+bob+1);
+          }
+          if(pRemain>0){
+            ctx.font="800 "+Math.floor(cw*0.34)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+            ctx.lineWidth=3; ctx.strokeStyle="rgba(0,0,0,.6)";
+            var psec=""+Math.max(1,Math.ceil(pRemain/1000));
+            var sx=pcx+cw*0.36, sy=pcy+bob-cw*0.36;
+            ctx.strokeText(psec,sx,sy); ctx.fillStyle=ringC; ctx.fillText(psec,sx,sy);
+          }
         }
 
         // snake: continuous trail, drawn tail -> head with curve smoothing (any angle, incl. diagonal)
@@ -1034,23 +1284,35 @@
           ctx.lineCap="round"; ctx.lineJoin="round";
           ctx.shadowColor=skin.body; ctx.shadowBlur=isFever()?20:8;
           ctx.strokeStyle=skin.body; ctx.lineWidth=cw*0.74;
-          ctx.beginPath();
-          if(pts.length===1){ ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[0].x+0.1,pts[0].y); }
-          else if(pts.length===2){ ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); }
-          else{
-            ctx.moveTo(pts[0].x,pts[0].y);
-            for(var pi=1;pi<pts.length-1;pi++){ var mx=(pts[pi].x+pts[pi+1].x)/2, my=(pts[pi].y+pts[pi+1].y)/2; ctx.quadraticCurveTo(pts[pi].x,pts[pi].y,mx,my); }
-            ctx.lineTo(pts[pts.length-1].x,pts[pts.length-1].y);
+          function buildPath(from,to){
+            ctx.beginPath();
+            if(to<=from){ ctx.moveTo(pts[from].x,pts[from].y); ctx.lineTo(pts[from].x+0.1,pts[from].y); return; }
+            if(to-from===1){ ctx.moveTo(pts[from].x,pts[from].y); ctx.lineTo(pts[to].x,pts[to].y); return; }
+            ctx.moveTo(pts[from].x,pts[from].y);
+            for(var pi=from+1;pi<to;pi++){ var mx=(pts[pi].x+pts[pi+1].x)/2, my=(pts[pi].y+pts[pi+1].y)/2; ctx.quadraticCurveTo(pts[pi].x,pts[pi].y,mx,my); }
+            ctx.lineTo(pts[to].x,pts[to].y);
           }
-          ctx.stroke();
+          /* 🐍 脱皮: while active, the last 5 tail segments counted from
+             the rear (pts[0] is the tail tip) are drawn almost transparent */
+          var ghostN=(timestamp<shedUntil)?Math.min(SHED_SEGS,Math.max(0,pts.length-3)):0;
+          if(ghostN>0){
+            ctx.globalAlpha=0.16;
+            buildPath(0,Math.min(ghostN,pts.length-1)); ctx.stroke();
+            ctx.globalAlpha=1;
+            buildPath(Math.min(ghostN,pts.length-1),pts.length-1); ctx.stroke();
+          }else{
+            buildPath(0,pts.length-1); ctx.stroke();
+          }
           ctx.shadowBlur=0;
-          // belly dots / pattern
+          // belly dots / pattern (skipped on the ghost tail)
           ctx.fillStyle=skin.belly; ctx.globalAlpha=0.5;
-          for(var d=2;d<pts.length;d+=2){ ctx.beginPath(); ctx.arc(pts[d].x,pts[d].y,cw*0.11,0,Math.PI*2); ctx.fill(); }
+          for(var d=2;d<pts.length;d+=2){ if(ghostN&&d<ghostN) continue; ctx.beginPath(); ctx.arc(pts[d].x,pts[d].y,cw*0.11,0,Math.PI*2); ctx.fill(); }
           ctx.globalAlpha=1;
           // tail taper
           var tail=pts[0];
+          if(ghostN) ctx.globalAlpha=0.16;
           ctx.fillStyle=skin.dark; ctx.beginPath(); ctx.arc(tail.x,tail.y,cw*0.2,0,Math.PI*2); ctx.fill();
+          ctx.globalAlpha=1;
           // head
           var hp=pts[pts.length-1];
           ctx.fillStyle=skin.head; ctx.beginPath(); ctx.arc(hp.x,hp.y,cw*0.46,0,Math.PI*2); ctx.fill();
@@ -1070,6 +1332,22 @@
             ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(e[0],e[1],cw*0.13,0,Math.PI*2); ctx.fill();
             ctx.fillStyle="#12240f"; ctx.beginPath(); ctx.arc(e[0]+dir.x*2,e[1]+dir.y*2,cw*0.065,0,Math.PI*2); ctx.fill();
           });
+          ctx.restore();
+        }
+
+        // launcher visuals: while held, the bomb rides at the snake's mouth;
+        // once fired, the bomb flies with a sparking fuse
+        if(launcher&&typeof hp!=="undefined"&&hp){
+          ctx.font=Math.floor(cw*0.52)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+          ctx.fillText("💣",hp.x+dir.x*cw*0.66,hp.y+dir.y*cw*0.66);
+        }
+        if(bombShot){
+          var bsx=bombShot.x*cw, bsy=bombShot.y*ch;
+          ctx.save();
+          ctx.fillStyle="#23272b"; ctx.beginPath(); ctx.arc(bsx,bsy,cw*0.3,0,Math.PI*2); ctx.fill();
+          ctx.fillStyle="rgba(255,255,255,.55)"; ctx.beginPath(); ctx.arc(bsx-cw*0.1,bsy-cw*0.11,cw*0.09,0,Math.PI*2); ctx.fill();
+          ctx.strokeStyle="#8a6b3a"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(bsx,bsy-cw*0.28); ctx.quadraticCurveTo(bsx+cw*0.12,bsy-cw*0.44,bsx+cw*0.2,bsy-cw*0.4); ctx.stroke();
+          if(Math.floor(timestamp/90)%2===0){ ctx.fillStyle="#ffd23c"; star(bsx+cw*0.22,bsy-cw*0.42,cw*0.11); }
           ctx.restore();
         }
 
@@ -1140,6 +1418,7 @@
           updateContinuous(dt);
           if(combo>0&&lastEatAt&&ts-lastEatAt>3500){ /* handled in update */ }
           if(slowUntil&&performance.now()>slowUntil&&slowUntil!==0){ slowUntil=0; updateHud(); }
+          if(shedUntil&&performance.now()>shedUntil){ shedUntil=0; updateHud(); }
           if(feverUntil&&performance.now()>feverUntil){ feverUntil=0; updateHud(); }
         }
         draw(ts);
@@ -1154,6 +1433,7 @@
         state="playing";
         runStart=now(); lastStep=0; elapsedBefore=0;
         overlay.classList.add("hidden");
+        gameMenu.classList.add("hidden");
         ovRank.style.display="none"; ovFinal.classList.remove("show"); ovNewBest.classList.remove("show");
         if(ovMeters) ovMeters.classList.add("hidden");
         startBtn.classList.remove("big-retry");
@@ -1165,22 +1445,48 @@
         if(!hintShown){ hintShown=true; playHintEl.classList.add("show"); setTimeout(function(){ playHintEl.classList.remove("show"); },3600); }
         else toast("ステージ"+(currentStage+1)+"開始！");
       }
+      function showPauseOverlay(){
+        pauseBtn.textContent="▶ 再開";
+        ovRank.style.display="none"; ovFinal.classList.remove("show"); ovNewBest.classList.remove("show");
+        if(ovMeters) ovMeters.classList.add("hidden");
+        ovTitle.textContent="一時停止中";
+        ovMsg.textContent="スコア "+score+" 点 ／ 長さ "+segCount+" ／ Lv"+level+"。再開ボタンか Space で続けられます。";
+        exitFsBtn.classList.remove("hidden");
+        startBtn.textContent="▶ 再開";
+        overlay.classList.remove("hidden");
+      }
+      function resumeGame(){
+        state="playing";
+        elapsedBefore+=now()-pausedAt; pausedAt=0; lastStep=0;
+        overlay.classList.add("hidden");
+        gameMenu.classList.add("hidden");
+        pauseBtn.textContent="⏸ 一時停止";
+      }
       function togglePause(){
         if(state==="playing"){
           state="paused"; pausedAt=now();
-          pauseBtn.textContent="▶ 再開";
-          ovRank.style.display="none"; ovFinal.classList.remove("show"); ovNewBest.classList.remove("show");
-          ovTitle.textContent="一時停止中";
-          ovMsg.textContent="スコア "+score+" 点 ／ 長さ "+segCount+" ／ Lv"+level+"。再開ボタンか Space で続けられます。";
-          exitFsBtn.classList.remove("hidden");
-          startBtn.textContent="▶ 再開";
-          overlay.classList.remove("hidden");
+          showPauseOverlay();
         }else if(state==="paused"){
-          state="playing";
-          elapsedBefore+=now()-pausedAt; pausedAt=0; lastStep=0;
-          overlay.classList.add("hidden");
-          pauseBtn.textContent="⏸ 一時停止";
+          resumeGame();
         }
+      }
+      /* ---------- menu screen (fullscreen) ----------
+         Detailed info and every control button live here, so the board
+         itself stays clear while playing. */
+      function updateMenuInfo(){
+        menuScoreEl.textContent="ステージ"+(currentStage+1)+"「"+STAGES[currentStage].name+"」 ／ スコア "+score+" 点 ／ ベスト "+best+" 点 ／ 🍎 "+(apples||0)+" / "+STAGES[currentStage].target;
+        menuNextEl.innerHTML=nextRewardEl?nextRewardEl.innerHTML:"";
+        menuSoundBtn.textContent=soundOn?"🔊 音 ON":"🔇 音 OFF";
+      }
+      function openMenu(){
+        if(state!=="playing") return;
+        state="paused"; pausedAt=now();
+        updateMenuInfo();
+        gameMenu.classList.remove("hidden");
+      }
+      function closeMenu(){
+        if(state!=="paused") return;
+        resumeGame();
       }
       function togglePauseOrStart(){
         if(state==="playing"||state==="paused") togglePause(); else startGame();
@@ -1198,7 +1504,8 @@
         if(kn){ /* direction keys are swallowed (no page scroll) but do NOT steer: drag on screen only */ }
         else if(k===" "){ togglePauseOrStart(); }
         else if(k==="Enter"){ if(state==="over"||state==="idle"||state==="clear") startGame(); else if(state==="paused") togglePause(); }
-        else if(k==="Escape"){ exitFullscreen(); }
+        else if(k==="f"||k==="F"){ fireBomb(); }
+        else if(k==="Escape"){ if(state==="playing") openMenu(); else if(state==="paused") closeMenu(); }
         else handled=false;
         if(handled) e.preventDefault();
       });
@@ -1213,10 +1520,29 @@
       /* block page scroll while playing (swipes were scrolling the page) */
       document.addEventListener("touchmove",function(e){ if(state==="playing") e.preventDefault(); },{passive:false});
       pauseBtn.addEventListener("click",function(){ if(state==="playing"||state==="paused") togglePause(); });
+      menuBtn.addEventListener("click",function(){ if(state==="playing") openMenu(); else if(state==="paused") closeMenu(); });
+      /* dedicated launcher fire button: visible only while a bomb is held.
+         It is a real <button> above the canvas, so tapping it never steers
+         the snake — the canvas drag handlers don't see the event. */
+      fireBtn.addEventListener("click",function(){ fireBomb(); });
+      menuResumeBtn.addEventListener("click",closeMenu);
+      menuRestartBtn.addEventListener("click",function(){ startGame(); });
+      menuSoundBtn.addEventListener("click",function(){ soundBtn.click(); updateMenuInfo(); });
+      menuExitBtn.addEventListener("click",function(){
+        if(state!=="paused") return;
+        gameMenu.classList.add("hidden");
+        exitFullscreen();
+        showPauseOverlay();
+      });
+      menuStageBtn.addEventListener("click",function(){
+        var panel=document.getElementById("settingsPanel");
+        if(panel){ panel.open=true; setTimeout(function(){ panel.scrollIntoView({behavior:"smooth",block:"start"}); },60); }
+      });
       resetBtn.addEventListener("click",startGame);
       soundBtn.addEventListener("click",function(){
         soundOn=!soundOn;
         soundBtn.textContent=soundOn?"🔊 音 ON":"🔇 音 OFF";
+        menuSoundBtn.textContent=soundBtn.textContent;
         soundBtn.setAttribute("aria-pressed",soundOn?"true":"false");
         if(soundOn) sEat();
       });
@@ -1284,6 +1610,7 @@
       resetGame();
       renderStages();
       state="idle";
+      enterFullscreen(); /* fullscreen-only: the game shell covers the screen from load */
       rafId=requestAnimationFrame(loop);
     })();
     </script>
