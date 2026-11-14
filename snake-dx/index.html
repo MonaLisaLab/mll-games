@@ -792,6 +792,7 @@
         spawnConfetti(); triggerFlash(255,255,255,220,0.3); triggerShake(4,240); triggerHitstop(120);
         clearedStages[currentStage]=true;
         if(currentStage+1<STAGES.length) highestUnlocked=Math.max(highestUnlocked,currentStage+1);
+        saveProgress();
         var bonus=100+currentStage*20; score+=bonus;
         if(score>best) best=score;
         sessionGames++; sessionApples+=apples;
@@ -898,7 +899,7 @@
             score+=30; toast("🎯 ミッション達成「"+m.text+"」 +30点"); sPower();
           }
         });
-        if(changed) renderMissions();
+        if(changed){ renderMissions(); saveProgress(); }
       }
       function refreshSkins(){
         document.querySelectorAll(".skin-chip").forEach(function(chip){
@@ -922,6 +923,7 @@
         nextStageBtn.classList.add("hidden"); exitFsBtn.classList.remove("hidden");
         shakeUntil=now()+320; boardWrap.classList.remove("shake"); void boardWrap.offsetWidth; boardWrap.classList.add("shake");
         var isBest=score>best; if(isBest) best=score;
+        saveProgress();
         sessionGames++; sessionApples+=apples;
         refreshSkins(); updateHud(); renderMissions();
         var rank= score>=800?"SS":score>=550?"S":score>=380?"A":score>=220?"B":score>=100?"C":"D";
@@ -1960,8 +1962,48 @@
         if(mq.addEventListener) mq.addEventListener("change",function(){ refreshColors(); draw(now()); });
       }
 
+
+      /* ---------- progress persistence (browser localStorage) ---------- */
+      var PROGRESS_KEY="snakedx_progress_v1";
+      function saveProgress(){
+        try{
+          localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+            best:best, highestUnlocked:highestUnlocked, clearedStages:clearedStages,
+            missionDone:missionDone, currentStage:currentStage, skinKey:skinKey,
+            modeKey:modeKey, speedKey:speedKey, sessionApples:sessionApples, sessionGames:sessionGames
+          }));
+        }catch(e){}
+      }
+      function loadProgress(){
+        try{
+          var raw=localStorage.getItem(PROGRESS_KEY);
+          if(!raw) return;
+          var d=JSON.parse(raw);
+          if(!d) return;
+          if(typeof d.best==="number" && d.best>best) best=d.best;
+          if(typeof d.highestUnlocked==="number") highestUnlocked=Math.max(0, Math.min(STAGES.length-1, d.highestUnlocked));
+          if(d.clearedStages && typeof d.clearedStages==="object") clearedStages=d.clearedStages;
+          if(d.missionDone && typeof d.missionDone==="object") missionDone=d.missionDone;
+          if(typeof d.currentStage==="number") currentStage=Math.max(0, Math.min(highestUnlocked, d.currentStage));
+          if(typeof d.sessionApples==="number") sessionApples=d.sessionApples;
+          if(typeof d.sessionGames==="number") sessionGames=d.sessionGames;
+          if(d.skinKey && SKINS[d.skinKey] && sessionApples>=(SKIN_UNLOCK[d.skinKey]||0)) skinKey=d.skinKey;
+          if(d.modeKey && MODES[d.modeKey]) modeKey=d.modeKey;
+          if(d.speedKey && SPEEDS[d.speedKey]) speedKey=d.speedKey;
+          document.querySelectorAll(".mode-chip").forEach(function(c){ c.setAttribute("aria-pressed", c.getAttribute("data-mode")===modeKey ? "true" : "false"); });
+          document.querySelectorAll(".speed-chip").forEach(function(c){ c.setAttribute("aria-pressed", c.getAttribute("data-speed")===speedKey ? "true" : "false"); });
+          document.querySelectorAll(".skin-chip").forEach(function(c){ c.setAttribute("aria-pressed", c.getAttribute("data-skin")===skinKey ? "true" : "false"); });
+          var md=document.getElementById("modeDesc"); if(md) md.textContent=MODES[modeKey];
+          refreshColors(); refreshSkins(); renderMissions(); updateHud();
+        }catch(e){}
+      }
+      window.addEventListener("beforeunload", saveProgress);
+      document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") saveProgress(); });
+      setInterval(saveProgress, 5000);
+
       refreshColors();
       resetGame();
+      loadProgress();
       renderStages();
       state="idle";
       enterFullscreen(); /* fullscreen-only: the game shell covers the screen from load */
