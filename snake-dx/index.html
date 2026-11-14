@@ -127,6 +127,7 @@
       .btn.ghost{background:var(--panel);color:var(--ink);border:1.5px solid var(--line);box-shadow:var(--shadow-sm)}
       .btn.ghost:hover{background:var(--accent-soft)}
       .btn.small{padding:8px 16px;min-height:2.4rem;font-size:.9rem}
+      a.btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;text-align:center}
       .controls-bar{display:flex;gap:8px;margin-top:12px}
       .controls-bar .btn{flex:1;padding-left:8px;padding-right:8px}
       /* selectors */
@@ -266,6 +267,7 @@
             <button class="btn" id="startBtn" type="button">▶ スタート</button>
             <button class="btn hidden" id="nextStageBtn" type="button" style="background:#e79a00;color:#231a00">次のステージへ ➜</button>
             <button class="btn ghost hidden" id="exitFsBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">全画面を終了</button>
+            <a class="btn ghost" href="https://monalisalab.github.io/mll-games/" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🏠 トップページへ</a>
           </div>
         </div>
         <button class="menu-btn" id="menuBtn" type="button" aria-label="メニューを開く">⏸</button>
@@ -280,6 +282,7 @@
             <button class="btn ghost" id="menuSoundBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🔊 音 ON</button>
             <button class="btn ghost" id="menuStageBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🎯 ステージ・設定へ</button>
             <button class="btn ghost" id="menuExitBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">⛶ 全画面を終了</button>
+            <a class="btn ghost wide" href="https://monalisalab.github.io/mll-games/" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🏠 トップページに戻る</a>
           </div>
         <details class="menu-panel" id="missionsPanel">
           <summary>🎯 ミッション（全20）― 展開して確認</summary>
@@ -405,6 +408,8 @@
          mouth (launcher=true) until the fire button launches it, another
          item is taken, or the snake runs into a block and it explodes ---- */
       var launcher=false, bombShot=null;
+      /* fired-bomb blast radius in cells: 5.4 = 3× the original 1.8 */
+      var LAUNCHER_BLAST_R=5.4;
       /* ---- shed (🐍 脱皮) state: while active, the last SHED_SEGS tail
          segments are transparent and have no self-collision ---- */
       var shedUntil=0, blockGraceUntil=0;
@@ -437,8 +442,10 @@
       /* ---- Sakurai feel state: hit-stop / flash / scaled shake / hit marks / confetti ---- */
       var hitstopUntil=0, flashUntil=0, flashDur=1, flashColor="255,255,255", flashMax=0.35;
       var shakeMag=0, shakeStart=0, shakeDur=0, hitRings=[], confetti=[], hintShown=false;
-      /* ⚡ thunder bolts: jagged lightning drawn briefly on each struck cell */
+      /* ⚡ thunder bolts: jagged lightning drawn briefly on each struck cell.
+         THUNDER_CELLS = how many random field cells one strike hits (50). */
       var thunderBolts=[];
+      var THUNDER_CELLS=50;
       /* laser beams: straight segments (split where the beam wraps through
          a wall) drawn briefly after firing; laserGot counts pickups */
       var laserBeams=[], laserGot=0;
@@ -1037,17 +1044,15 @@
         updateHud();
       }
       /* Launcher state + block contact: the bomb held in the mouth explodes
-         and destroys 2 cells — the block that was hit plus the nearest
-         other block. The snake survives and the launcher ends. */
+         and destroys 6 cells (3× the original 2) — the block that was hit
+         plus the five nearest other blocks. The snake survives and the
+         launcher ends. */
       function explodeMouthBomb(oi,t){
         var hit=obstacles[oi];
-        var targets=[hit], bestD=1e9, second=null;
-        for(var i=0;i<obstacles.length;i++){
-          if(i===oi) continue;
-          var o=obstacles[i], d=Math.hypot(o.x-hit.x,o.y-hit.y);
-          if(d<bestD){ bestD=d; second=o; }
-        }
-        if(second) targets.push(second);
+        var targets=[hit];
+        var others=obstacles.filter(function(o){return o!==hit;});
+        others.sort(function(a,b){return Math.hypot(a.x-hit.x,a.y-hit.y)-Math.hypot(b.x-hit.x,b.y-hit.y);});
+        for(var i=0;i<others.length&&targets.length<6;i++) targets.push(others[i]);
         targets.forEach(function(dc){
           var ix=obstacles.indexOf(dc); if(ix>=0) obstacles.splice(ix,1);
           burst(dc,"#b9c4b2",12); burst(dc,"#ff8a3c",7);
@@ -1067,7 +1072,7 @@
         var destroyed=[];
         for(var i=obstacles.length-1;i>=0;i--){
           var o=obstacles[i];
-          if(Math.hypot(o.x+0.5-ex,o.y+0.5-ey)<=1.8){ destroyed.push(o); obstacles.splice(i,1); }
+          if(Math.hypot(o.x+0.5-ex,o.y+0.5-ey)<=LAUNCHER_BLAST_R){ destroyed.push(o); obstacles.splice(i,1); }
         }
         var pts=destroyed.length*20*(isFever()?2:1); score+=pts;
         destroyed.forEach(function(dc){ burst(dc,"#b9c4b2",12); burst(dc,"#ff8a3c",7); });
@@ -1078,11 +1083,11 @@
         if(destroyed.length){ floatText({x:Math.floor(ex),y:Math.floor(ey)},"💥 "+destroyed.length+"個破壊 +"+pts,"#ffb37a"); toast("💥 ボム命中！ 岩を "+destroyed.length+" 個 破壊（+"+pts+"点）"); }
         updateHud();
       }
-      /* ---------- thunder (⚡ サンダー): 10 random field cells are struck
+      /* ---------- thunder (⚡ サンダー): 50 random field cells are struck
          by lightning; any obstacle on a struck cell is destroyed ---------- */
       function thunderStrike(t){
         var picked=[], seen={}, guard=0;
-        while(picked.length<10 && guard<300){
+        while(picked.length<THUNDER_CELLS && guard<2000){
           guard++;
           var cx=Math.floor(Math.random()*COLS), cy=Math.floor(Math.random()*ROWS), k=key(cx,cy);
           if(seen[k]) continue;
@@ -1106,10 +1111,10 @@
         if(destroyed.length){
           floatText(destroyed[0],"⚡ "+destroyed.length+"マス破壊 +"+pts,"#ffe95c");
           destroyed.forEach(function(dc){ spawnHitMark(dc,"#ffe95c",false); });
-          toast("⚡ サンダー！ ランダム10マスに落雷、障害物を "+destroyed.length+" マス破壊（+"+pts+"点）");
+          toast("⚡ サンダー！ ランダム50マスに落雷、障害物を "+destroyed.length+" マス破壊（+"+pts+"点）");
         } else {
           floatText(headCell,"⚡ サンダー！","#ffe95c");
-          toast("⚡ サンダー！ ランダム10マスに落雷（障害物には当たらなかった）");
+          toast("⚡ サンダー！ ランダム50マスに落雷（障害物には当たらなかった）");
         }
         updateHud();
       }
@@ -1342,7 +1347,7 @@
             vibrate(25);
           }
           if(pc.type==="thunder"){
-            /* ⚡ サンダー: instantly strikes 10 random field cells with
+            /* ⚡ サンダー: instantly strikes 50 random field cells with
                lightning — obstacles on those cells are destroyed (+20 each).
                Instant effect like ⭐, so no badge / duration state. */
             thunderGot++;
@@ -1404,7 +1409,7 @@
             /* 🚀 launcher pickup: a bomb is held in the mouth, not exploded
                on the spot. The dedicated fire button appears on the board;
                firing it, taking another item, or running into a block
-               (mouth-bomb explosion, 2 cells destroyed) ends the launcher. */
+               (mouth-bomb explosion, 6 cells destroyed) ends the launcher. */
             launcher=true;
             spawnHitMark(pc,"#ff8a3c",false); triggerHitstop(70); triggerShake(3,140);
             floatText(pc,"🚀 ランチャー GET","#ffb37a");

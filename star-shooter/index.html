@@ -57,6 +57,11 @@ h2.over-title { margin:0 0 6px; font-size:clamp(34px,9vw,52px); font-weight:900;
 .result-table.v { font-weight:800; color:#fff; font-variant-numeric:tabular-nums;}
 #newRecord { display:none; color:#ffd94d; font-weight:900; font-size:17px; margin-top:12px; text-shadow:0 0 12px rgba(255,190,0,.8);}
 .ship-deco { font-size:44px; margin-bottom:8px; filter:drop-shadow(0 0 12px rgba(87,182,255,.9));}
+.home-link { display:inline-flex; align-items:center; justify-content:center; gap:6px; margin-top:20px; padding:10px 22px; min-height:44px; font-size:14px; font-weight:700; letter-spacing:.04em; color:#cfe4ff; background:rgba(8,16,38,.75); border:1px solid rgba(110,180,255,.45); border-radius:999px; text-decoration:none; pointer-events:auto; cursor:pointer;}
+.home-link:hover { background:rgba(20,45,90,.92); color:#fff; border-color:rgba(140,200,255,.85);}
+.home-link:active { transform:scale(.96);}
+.hud-home { position:absolute; left:50%; transform:translateX(-50%); bottom:calc(18px + env(safe-area-inset-bottom)); margin-top:0; padding:8px 14px; min-height:36px; font-size:12.5px; background:rgba(6,12,30,.62);}
+.hud-home:active { transform:translateX(-50%) scale(.96);}
 </style>
 </head>
 <body>
@@ -84,6 +89,7 @@ h2.over-title { margin:0 0 6px; font-size:clamp(34px,9vw,52px); font-weight:900;
 <div id="waveBanner"></div>
 <div id="weaponTag">武器 Lv.1</div>
 <button id="bombBtn" type="button">ボム<span class="cnt">× 1</span></button>
+<a class="home-link hud-home" href="https://monalisalab.github.io/mll-games/">🏠 トップページ</a>
 </div>
 <div id="dmgFlash"></div>
 
@@ -102,6 +108,7 @@ h2.over-title { margin:0 0 6px; font-size:clamp(34px,9vw,52px); font-weight:900;
 連続で敵を倒すとコンボが上がり、スコア倍率アップ！
 </div>
 <div class="best-line">ベストスコア：<span id="titleBest">0</span></div>
+<a class="home-link" href="https://monalisalab.github.io/mll-games/">← トップページに戻る</a>
 </div>
 
 <div class="overlay hidden" id="overScreen">
@@ -115,6 +122,7 @@ h2.over-title { margin:0 0 6px; font-size:clamp(34px,9vw,52px); font-weight:900;
 <div class="row"><span>ベストスコア</span><span class="v" id="finalBest">0</span></div>
 </div>
 <button class="big-btn" id="restartBtn" type="button">リスタート</button>
+<a class="home-link" href="https://monalisalab.github.io/mll-games/">← トップページに戻る</a>
 </div>
 </div>
 
@@ -258,6 +266,10 @@ startGame();
 document.getElementById('restartBtn').addEventListener('click', function(){
 goFullscreen();
 startGame();
+});
+document.querySelectorAll('.home-link').forEach(function(a){
+a.addEventListener('click', function(e){ e.stopPropagation();});
+a.addEventListener('pointerdown', function(e){ e.stopPropagation();});
 });
 
 function startGame(){
