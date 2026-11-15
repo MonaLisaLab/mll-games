@@ -608,47 +608,16 @@
       var sHurricane=function(){tone(180,900,.42,"sine",.1);tone(320,1400,.36,"triangle",.06,.05);tone(900,240,.4,"sine",.07,.12);tone(1400,500,.3,"triangle",.045,.2);};
       var sLifeLost=function(){tone(520,260,.18,"triangle",.09);tone(760,1180,.16,"triangle",.07,.1);};
       var sOver=function(){tone(440,110,.5,"triangle",.09);};
-      /* ---------- BGM (Web Audio生成ループ) ----------
-         スコア系アイテムとは無関係の、軽いチップチューン風ループ。
-         再生はプレイ中のみ。音ON/OFFボタンと連動し、一時停止・終了で止まる。 */
-      var bgmTimer=null, bgmStep=0, bgmNext=0, bgmGain=null;
-      function bgmFreq(midi){ return 440*Math.pow(2,(midi-69)/12); }
-      var BGM_MEL=[76,0,79,0,84,0,79,0, 81,0,79,0,76,0,74,0, 77,0,81,0,84,0,81,0, 79,0,83,0,79,0,74,0];
-      var BGM_BASS=[48,45,41,43];
-      function bgmNote(midi,t,dur,type,vol){
-        if(!audioCtx||!bgmGain) return;
-        var o=audioCtx.createOscillator(), g=audioCtx.createGain();
-        o.type=type; o.frequency.setValueAtTime(bgmFreq(midi),t);
-        g.gain.setValueAtTime(0.0001,t);
-        g.gain.exponentialRampToValueAtTime(vol,t+0.015);
-        g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-        o.connect(g); g.connect(bgmGain); o.start(t); o.stop(t+dur+0.03);
-      }
-      function bgmScheduleStep(step,t){
-        var mel=BGM_MEL[step%BGM_MEL.length];
-        if(mel) bgmNote(mel,t,0.19,"square",0.038);
-        if(step%8===0) bgmNote(BGM_BASS[Math.floor(step/8)%4],t,0.34,"triangle",0.075);
-        if(step%8===4) bgmNote(BGM_BASS[Math.floor(step/8)%4]+7,t,0.3,"triangle",0.055);
-        if(step%2===1) bgmNote(102,t,0.035,"sine",0.012);
-      }
-      function bgmTick(){
-        var c=audioCtx; if(!c) return;
-        if(!soundOn||state!=="playing"){ bgmNext=c.currentTime+0.06; return; }
-        if(bgmNext<c.currentTime-0.05) bgmNext=c.currentTime+0.05;
-        while(bgmNext<c.currentTime+0.22){
-          bgmScheduleStep(bgmStep,bgmNext);
-          bgmNext+= (typeof isFever==="function"&&isFever())?0.185:0.215;
-          bgmStep=(bgmStep+1)%BGM_MEL.length;
-        }
-      }
+      /* ---------- BGM（フリー音源ファイル bgm.ogg をループ再生） ----------
+         「Happy Clappy Loop」OwlishMedia（CC0）。プレイ中のみ再生し、
+         音ON/OFF・一時停止・終了と連動する。 */
+      var bgmEl=null;
       function bgmStart(){
-        if(bgmTimer) return;
-        var c=ac(); if(!c) return;
-        if(!bgmGain){ bgmGain=c.createGain(); bgmGain.gain.value=0.9; bgmGain.connect(c.destination); }
-        bgmStep=0; bgmNext=c.currentTime+0.08;
-        bgmTimer=setInterval(bgmTick,70);
+        if(!soundOn) return;
+        if(!bgmEl){ bgmEl=new Audio("bgm.ogg"); bgmEl.loop=true; bgmEl.volume=0.55; bgmEl.preload="auto"; }
+        if(bgmEl.paused){ var p=bgmEl.play(); if(p&&p.catch) p.catch(function(){}); }
       }
-      function bgmStop(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
+      function bgmStop(){ if(bgmEl&&!bgmEl.paused) bgmEl.pause(); }
       function vibrate(ms){ if(navigator.vibrate){ try{navigator.vibrate(ms);}catch(e){} } }
 
       /* ---------- toast ---------- */

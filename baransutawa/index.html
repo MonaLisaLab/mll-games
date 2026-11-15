@@ -458,51 +458,16 @@
     }
     function sndClick() { tone(700, 700, 0.06, 'triangle', 0.15); }
 
-    /* ---------- BGM（Web Audio生成ループ） ----------
-       落ち着いたコード進行（C-Am-F-G）のゆるやかなループ。
+    /* ---------- BGM（フリー音源ファイル bgm.ogg をループ再生） ----------
+       「Chill lofi inspired [loop edit]」omfgdude / loop edit by qubodup（CC0）。
        プレイ中のみ再生し、ミュート／メニュー／ゲームオーバーで止まる。 */
-    var bgmTimer = null, bgmStep = 0, bgmNext = 0, bgmGain = null;
-    function bgmFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
-    var BGM_CHORDS = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]];
-    var BGM_BASS = [36, 33, 29, 31];
-    var BGM_MEL = [72, 0, 76, 0, 69, 0, 72, 0, 77, 0, 72, 0, 74, 0, 71, 0];
-    function bgmNote(midi, t, dur, type, vol) {
-      if (!AC || !bgmGain) return;
-      var o = AC.createOscillator(), g = AC.createGain();
-      o.type = type; o.frequency.setValueAtTime(bgmFreq(midi), t);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g); g.connect(bgmGain); o.start(t); o.stop(t + dur + 0.05);
-    }
-    function bgmScheduleStep(step, t) {
-      var bar = Math.floor(step / 4) % 4;
-      if (step % 4 === 0) {
-        var ch = BGM_CHORDS[bar];
-        for (var i = 0; i < ch.length; i++) bgmNote(ch[i], t, 1.65, 'triangle', 0.026);
-        bgmNote(BGM_BASS[bar], t, 1.3, 'sine', 0.055);
-      }
-      var mel = BGM_MEL[step % BGM_MEL.length];
-      if (mel) bgmNote(mel, t, 0.5, 'sine', 0.038);
-    }
-    function bgmTick() {
-      if (!AC) return;
-      if (muted || mode === 'menu' || mode === 'over') { bgmNext = AC.currentTime + 0.06; return; }
-      if (bgmNext < AC.currentTime - 0.05) bgmNext = AC.currentTime + 0.05;
-      while (bgmNext < AC.currentTime + 0.3) {
-        bgmScheduleStep(bgmStep, bgmNext);
-        bgmNext += 0.42;
-        bgmStep = (bgmStep + 1) % 16;
-      }
-    }
+    var bgmEl = null;
     function bgmStart() {
-      if (bgmTimer) return;
-      var ac = audio(); if (!ac) return;
-      if (!bgmGain) { bgmGain = ac.createGain(); bgmGain.gain.value = 0.9; bgmGain.connect(ac.destination); }
-      bgmStep = 0; bgmNext = ac.currentTime + 0.08;
-      bgmTimer = setInterval(bgmTick, 90);
+      if (muted) return;
+      if (!bgmEl) { bgmEl = new Audio('bgm.ogg'); bgmEl.loop = true; bgmEl.volume = 0.55; bgmEl.preload = 'auto'; }
+      if (bgmEl.paused) { var p = bgmEl.play(); if (p && p.catch) p.catch(function() {}); }
     }
-    function bgmStop() { if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; } }
+    function bgmStop() { if (bgmEl && !bgmEl.paused) bgmEl.pause(); }
     </script>
     <script>
     'use strict';

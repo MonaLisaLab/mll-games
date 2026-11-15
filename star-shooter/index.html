@@ -285,47 +285,16 @@ function sPower(){ tone(523, 523, 0.08, 'triangle', 0.09); tone(659, 659, 0.08, 
 function sBombSfx(){ tone(130, 28, 0.5, 'sawtooth', 0.17); tone(90, 30, 0.55, 'square', 0.1, 0.02); }
 function sOver(){ tone(440, 110, 0.6, 'triangle', 0.11); }
 
-/* ---------- BGM（Web Audio生成ループ） ----------
-   Am-F-C-G のドライビングなシンセ風ループ。プレイ中のみ再生。 */
-var bgmTimer = null, bgmStep = 0, bgmNext = 0, bgmGain = null;
-function bgmFreq(midi){ return 440 * Math.pow(2, (midi - 69) / 12); }
-var BGM_ROOTS = [45, 41, 48, 43];
-var BGM_MEL = [69,0,72,0,76,0,72,0, 77,0,72,0,69,0,72,0, 76,0,79,0,76,0,72,0, 74,0,71,0,74,0,79,0];
-function bgmNote(midi, t, dur, type, vol){
-if (!AC || !bgmGain) return;
-var o = AC.createOscillator(), g = AC.createGain();
-o.type = type; o.frequency.setValueAtTime(bgmFreq(midi), t);
-g.gain.setValueAtTime(0.0001, t);
-g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
-g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-o.connect(g); g.connect(bgmGain); o.start(t); o.stop(t + dur + 0.03);
-}
-function bgmScheduleStep(step, t){
-var bar = Math.floor(step / 8) % 4, root = BGM_ROOTS[bar], pos = step % 8;
-var bassMidi = (pos === 2 || pos === 6) ? root + 12 : (pos === 4 ? root + 7 : root);
-bgmNote(bassMidi, t, 0.17, 'sawtooth', 0.05);
-var mel = BGM_MEL[step % BGM_MEL.length];
-if (mel) bgmNote(mel, t, 0.18, 'square', 0.026);
-if (step % 2 === 1) bgmNote(105, t, 0.03, 'sine', 0.008);
-}
-function bgmTick(){
-if (!AC) return;
-if (muted || state !== STATE.PLAY){ bgmNext = AC.currentTime + 0.06; return; }
-if (bgmNext < AC.currentTime - 0.05) bgmNext = AC.currentTime + 0.05;
-while (bgmNext < AC.currentTime + 0.22){
-bgmScheduleStep(bgmStep, bgmNext);
-bgmNext += 0.21;
-bgmStep = (bgmStep + 1) % BGM_MEL.length;
-}
-}
+/* ---------- BGM（フリー音源ファイル bgm.ogg をループ再生） ----------
+   「RailJet」Deceased Superior Technician (DST), CC-BY 3.0
+   http://www.nosoapradio.us / プレイ中のみ再生。 */
+var bgmEl = null;
 function bgmStart(){
-if (bgmTimer) return;
-var ac = audio(); if (!ac) return;
-if (!bgmGain){ bgmGain = ac.createGain(); bgmGain.gain.value = 0.9; bgmGain.connect(ac.destination); }
-bgmStep = 0; bgmNext = ac.currentTime + 0.08;
-bgmTimer = setInterval(bgmTick, 70);
+if (muted) return;
+if (!bgmEl){ bgmEl = new Audio('bgm.ogg'); bgmEl.loop = true; bgmEl.volume = 0.5; bgmEl.preload = 'auto'; }
+if (bgmEl.paused){ var p = bgmEl.play(); if (p && p.catch) p.catch(function(){}); }
 }
-function bgmStop(){ if (bgmTimer){ clearInterval(bgmTimer); bgmTimer = null; } }
+function bgmStop(){ if (bgmEl && !bgmEl.paused) bgmEl.pause(); }
 
 function goFullscreen(){
 var el = document.documentElement;
@@ -882,5 +851,6 @@ requestAnimationFrame(frame);
 requestAnimationFrame(frame);
 })();
 </script>
+<div style="text-align:center;font-size:11px;opacity:.6;padding:10px 0">BGM: 「RailJet」 by Deceased Superior Technician (DST), CC-BY 3.0 — <a href="http://www.nosoapradio.us" style="color:inherit">www.nosoapradio.us</a></div>
 </body>
 </html>

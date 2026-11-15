@@ -180,9 +180,9 @@ function sfxLevel(){[659,880,1318].forEach(function(f,i){tone(f,0.2,"triangle",0
 function sfxUnlock(){[523,659,784,1046,1318].forEach(function(f,i){tone(f,0.22,"triangle",0.24,i*0.07)})}
 function sfxOver(){tone(392,0.3,"sawtooth",0.2,0,380);tone(311,0.34,"sawtooth",0.2,0.22,300);tone(233,0.6,"sawtooth",0.22,0.46,110)}
 function sfxFever(){[784,988,1175,1568].forEach(function(f,i){tone(f,0.18,"square",0.16,i*0.06)})}
-var bgmTimer=null,bgmStep=0,bgmNext=0;var BGM_NOTES=[293.66,311.13,392,440,466.16,587.33,622.25,783.99];var BGM_MELODY=[4,-1,2,3,4,-1,5,4,3,2,3,-1,1,2,0,-1,4,-1,2,3,5,4,3,2,3,-1,2,1,0,1,2,-1];
-function bgmStart(){if(!AC||bgmTimer)return;bgmNext=AC.currentTime+0.1;bgmStep=0;bgmTimer=setInterval(function(){if(!AC)return;var spb=60/138/2;while(bgmNext<AC.currentTime+0.18){var s=bgmStep%32,dt=Math.max(0,bgmNext-AC.currentTime);var n=BGM_MELODY[s];if(n>=0)tone(BGM_NOTES[n],0.22,"triangle",0.5,dt,null,bgmGain);if(s%8===0)tone(73.42,0.5,"sine",0.85,dt,null,bgmGain);if(s%8===4)tone(110,0.4,"sine",0.6,dt,null,bgmGain);bgmNext+=spb;bgmStep++}},60)}
-function setMuted(m){muted=m;save.muted=m;persist();if(masterGain)masterGain.gain.value=m?0:1;$("btn-mute").textContent=m?"🔇":"🔊"}
+var bgmEl=null;
+function bgmStart(){if(bgmEl){if(bgmEl.paused){var q=bgmEl.play();if(q&&q.catch)q.catch(function(){})}return}bgmEl=new Audio("bgm.ogg");bgmEl.loop=true;bgmEl.volume=0.5;bgmEl.muted=muted;var p=bgmEl.play();if(p&&p.catch)p.catch(function(){})}
+function setMuted(m){muted=m;save.muted=m;persist();if(masterGain)masterGain.gain.value=m?0:1;if(bgmEl)bgmEl.muted=m;$("btn-mute").textContent=m?"🔇":"🔊"}
 
 /* Game state */
 var state="menu";
@@ -478,5 +478,6 @@ $("btn-mute").addEventListener("click",function(){audioInit(); setMuted(!muted)}
 $("btn-mute").textContent=muted?"🔇":"🔊";
 checkMissions(false); renderMenu(); requestAnimationFrame(update);
 </script>
+<div style="text-align:center;font-size:11px;opacity:.55;padding:10px 0;color:#fff">BGM: 「Taiko drums (seamless loop)」 by jobro, CC-BY 3.0 (OpenGameArt)</div>
 </body>
 </html>
