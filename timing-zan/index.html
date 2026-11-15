@@ -1,1052 +1,480 @@
 <!doctype html>
 <html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-    <meta name="color-scheme" content="dark" />
-    <link rel="icon" href="data:," />
-    <title>タイミング斬り</title>
-    <style>
-      :root{
-        --indigo:#0c1129;
-        --indigo2:#131b3d;
-        --gold:#e9bc45;
-        --gold-bright:#ffd968;
-        --shu:#e0472f;
-        --paper:#f4ecd9;
-        --paper-dim:#b9b29c;
-        --line:rgba(233,188,69,.35);
-      }
-      *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-      html,body{ height:100%; }
-      body{
-        margin:0; background:var(--indigo); color:var(--paper);
-        font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
-        overflow:hidden; overscroll-behavior:none;
-      }
-      button{ min-height:2.25rem; font-family:inherit; cursor:pointer; }
-      #app{
-        position:fixed; inset:0; overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none;
-        background:
-          radial-gradient(120% 90% at 50% 0%, #1a2450 0%, var(--indigo2) 42%, var(--indigo) 78%);
-      }
-      canvas#game{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"/>
+<meta name="color-scheme" content="dark"/>
+<link rel="icon" href="data:,">
+<title>タイミング斬り</title>
+<style>
+:root{--indigo:#0c1129;--indigo2:#131b3d;--gold:#e9bc45;--gold-bright:#ffd968;--shu:#e0472f;--paper:#f4ecd9;--paper-dim:#b9b29c;--line:rgba(233,188,69,.35)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--indigo);color:var(--paper);font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;overflow:hidden;overscroll-behavior:none}
+button{min-height:2.25rem;font-family:inherit;cursor:pointer}
+#app{position:fixed;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;background:radial-gradient(120% 90% at 50% 0%,#1a2450 0%,var(--indigo2) 42%,var(--indigo) 78%)}
+canvas#game{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;top:0;left:0;right:0;z-index:5;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 0;display:none;pointer-events:none}
+#hud.on{display:block}
+.hud-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.hud-left,.hud-right{display:flex;flex-direction:column;gap:2px}.hud-right{align-items:flex-end;text-align:right}
+.hud-label{font-size:11px;letter-spacing:.18em;color:var(--paper-dim)}
+#hud-score{font-size:clamp(28px,6vw,42px);font-weight:900;line-height:1;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.55);font-variant-numeric:tabular-nums}
+#hud-best{font-size:12px;color:var(--paper-dim)}
+#hud-lives{font-size:clamp(18px,4.5vw,24px);letter-spacing:.12em;line-height:1.1}
+#hud-lives .heart{color:var(--shu);text-shadow:0 0 10px rgba(224,71,47,.6)}#hud-lives .heart.off{color:rgba(244,236,217,.18);text-shadow:none}
+#hud-level{font-size:13px;color:var(--gold-bright);font-weight:700;letter-spacing:.08em}
+#hud-next{font-size:12px;color:var(--paper-dim)}#hud-next b{color:var(--gold-bright)}
+#hud-fever{margin-top:6px;width:150px;height:8px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;border:1px solid rgba(255,255,255,.2)}
+#hud-fever i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#ff8a00,#ffd968,#ff3d00);transition:width .2s}
+#hud-combo{position:absolute;left:50%;top:15%;transform:translateX(-50%);text-align:center;opacity:0;transition:opacity .15s;pointer-events:none}
+#hud-combo.on{opacity:1}
+#hud-combo .num{font-size:clamp(38px,10vw,64px);font-weight:900;line-height:1;color:var(--gold-bright);text-shadow:0 0 26px rgba(233,188,69,.7),0 3px 0 rgba(0,0,0,.4)}
+#hud-combo .lbl{font-size:12px;letter-spacing:.35em;color:#fff;font-weight:700}
+#hud-combo .mult{font-size:14px;font-weight:800;color:#fff;margin-top:2px}
+#hud-combo.pop .num{animation:comboPop .18s ease-out}@keyframes comboPop{0%{transform:scale(1.45) rotate(-3deg)}100%{transform:scale(1)}}
+.corner-btns{position:absolute;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);z-index:8;display:flex;gap:8px}
+.icon-btn{width:44px;height:44px;min-height:44px;border-radius:50%;border:1px solid var(--line);background:rgba(10,14,34,.72);color:var(--paper);font-size:19px;display:flex;align-items:center;justify-content:center;padding:0;backdrop-filter:blur(4px)}
+#toplink{position:absolute;left:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:8;color:var(--paper-dim);font-size:12px;text-decoration:none;padding:10px 6px}
+#tap-hint{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 64px);transform:translateX(-50%);z-index:4;font-size:13px;letter-spacing:.18em;color:rgba(244,236,217,.65);display:none;pointer-events:none;white-space:nowrap;text-align:center;line-height:1.7}
+#tap-hint.on{display:block;animation:hintPulse 1.6s ease-in-out infinite}@keyframes hintPulse{0%,100%{opacity:.5}50%{opacity:1}}
+#banner{position:absolute;left:0;right:0;top:28%;z-index:6;text-align:center;pointer-events:none;opacity:0}
+#banner.show{animation:bannerIn 1.5s ease-out forwards}
+#banner .big{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-weight:700;font-size:clamp(30px,8vw,56px);letter-spacing:.14em;color:var(--gold-bright);text-shadow:0 0 30px rgba(233,188,69,.6),0 3px 0 rgba(0,0,0,.4)}
+#banner .sub{font-size:clamp(13px,3.4vw,17px);letter-spacing:.16em;color:var(--paper);margin-top:6px}
+#banner.danger .big{color:#ff6a55;text-shadow:0 0 30px rgba(224,71,47,.7)}
+@keyframes bannerIn{0%{opacity:0;transform:scale(1.4)}12%{opacity:1;transform:scale(1)}78%{opacity:1}100%{opacity:0;transform:scale(.96)}}
+#toast{position:absolute;left:50%;bottom:22%;transform:translateX(-50%) translateY(16px);z-index:9;background:rgba(12,17,41,.94);border:1px solid var(--gold);color:var(--gold-bright);padding:10px 20px;border-radius:999px;font-size:14px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;white-space:nowrap;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.overlay{position:absolute;inset:0;z-index:10;display:none;align-items:center;justify-content:center;padding:18px;background:radial-gradient(90% 70% at 50% 38%,rgba(19,27,61,.62),rgba(7,10,24,.9));overflow-y:auto}
+.overlay.on{display:flex}.panel{width:min(580px,100%);text-align:center;margin:auto;padding:10px 0 6px}
+.title-jp{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-weight:700;font-size:clamp(38px,10vw,68px);letter-spacing:.08em;line-height:1.15;color:#fff;text-shadow:0 0 34px rgba(233,188,69,.35),0 4px 0 rgba(0,0,0,.45)}
+.title-jp .accent{color:var(--shu)}
+.title-rule{width:min(300px,70%);height:2px;margin:14px auto 10px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.tagline{font-size:clamp(14px,3.8vw,17px);color:var(--paper);letter-spacing:.06em;line-height:1.9}.tagline b{color:var(--gold-bright)}
+.howto{font-size:12.5px;color:var(--paper-dim);letter-spacing:.04em;line-height:1.85;margin-top:6px}.howto b{color:#fff}
+.fruit-legend{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+.fruit-legend span{font-size:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);padding:6px 10px;border-radius:99px}
+.btn-main{display:inline-block;margin-top:20px;padding:15px 46px;border:none;border-radius:8px;background:linear-gradient(180deg,#f0644a,var(--shu) 55%,#b62f1e);color:#fff;font-size:20px;font-weight:800;letter-spacing:.22em;text-indent:.22em;box-shadow:0 10px 26px rgba(224,71,47,.45),inset 0 1px 0 rgba(255,255,255,.35)}
+.btn-main:active{transform:scale(.96)}
+.btn-sub{display:inline-block;margin-top:12px;padding:10px 26px;border-radius:6px;background:transparent;border:1px solid var(--line);color:var(--paper);font-size:14px;letter-spacing:.12em}
+.start-best{margin-top:14px;font-size:13px;color:var(--paper-dim)}.start-best b{color:var(--gold-bright);font-size:16px}
+.sect-title{margin:24px 0 10px;font-size:12px;letter-spacing:.3em;color:var(--paper-dim)}
+#sword-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.sword-chip{border:1px solid rgba(244,236,217,.22);background:rgba(255,255,255,.04);color:var(--paper);border-radius:8px;padding:9px 12px;min-width:96px;text-align:center}
+.sword-chip .sw{display:block;height:6px;border-radius:3px;margin-bottom:7px}.sword-chip .nm{font-size:14px;font-weight:700}.sword-chip .req{display:block;font-size:10.5px;color:var(--paper-dim);margin-top:2px}
+.sword-chip.sel{border-color:var(--gold);background:rgba(233,188,69,.12);box-shadow:0 0 0 1px var(--gold) inset}.sword-chip.locked{opacity:.45}
+details.missions{margin:20px auto 0;width:min(460px,100%);text-align:left;border:1px solid rgba(244,236,217,.16);border-radius:10px;background:rgba(255,255,255,.03)}
+details.missions summary{padding:12px 16px;font-size:14px;letter-spacing:.12em;list-style:none;display:flex;justify-content:space-between;align-items:center;min-height:44px}
+details.missions summary::-webkit-details-marker{display:none}details.missions summary .cnt{color:var(--gold-bright);font-size:12.5px}
+details.missions ul{margin:0;padding:2px 16px 14px;list-style:none}
+details.missions li{padding:7px 0 7px 26px;position:relative;font-size:13.5px;color:var(--paper-dim);border-top:1px solid rgba(244,236,217,.07)}
+details.missions li::before{content:"";position:absolute;left:2px;top:9px;width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(244,236,217,.35)}
+details.missions li.done{color:var(--paper)}details.missions li.done::before{content:"✓";border-color:var(--gold);background:var(--gold);color:#231a02;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center}
+details.missions li .prog{float:right;font-size:12px}
+.over-title{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-weight:700;font-size:clamp(34px,9vw,54px);letter-spacing:.18em;color:#fff;text-shadow:0 0 26px rgba(224,71,47,.45)}
+#over-rank{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:clamp(56px,15vw,92px);font-weight:700;line-height:1.1;color:var(--gold-bright);text-shadow:0 0 34px rgba(233,188,69,.55)}
+.rank-lbl{font-size:11px;letter-spacing:.4em;color:var(--paper-dim)}#over-score{font-size:clamp(30px,8vw,44px);font-weight:800;color:#fff;margin-top:6px}
+#over-newbest{color:var(--gold-bright);font-weight:800;letter-spacing:.18em;font-size:14px;min-height:20px}
+.over-stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:16px auto 0;max-width:420px}
+.over-stats .stat{border:1px solid rgba(244,236,217,.15);border-radius:8px;padding:8px 14px;min-width:92px;background:rgba(255,255,255,.03);flex:1 1 40%}
+.over-stats .stat .v{font-size:19px;font-weight:800;color:#fff}.over-stats .stat .k{font-size:10.5px;color:var(--paper-dim);letter-spacing:.12em;margin-top:2px}
+.pause-title{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:clamp(28px,7vw,40px);letter-spacing:.3em;color:#fff;font-weight:700}
+.btn-stack{display:flex;flex-direction:column;align-items:center;gap:4px}
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="game"></canvas>
+<div id="hud">
+  <div class="hud-row">
+    <div class="hud-left"><div class="hud-label">スコア</div><div id="hud-score">0</div><div id="hud-best">ベスト 0</div><div id="hud-fever"><i id="fever-bar"></i></div><div style="font-size:11px;color:#ffd968;letter-spacing:.1em" id="fever-label">FEVERまであと少し</div></div>
+    <div class="hud-right"><div id="hud-lives"></div><div id="hud-level">WAVE 1</div><div id="hud-next"></div><div style="font-size:12px;color:#b9b29c;margin-top:4px">斬った数 <b id="hud-sliced" style="color:#fff">0</b></div></div>
+  </div>
+  <div id="hud-combo"><div class="num">0</div><div class="lbl">連続斬り！</div><div class="mult"></div></div>
+</div>
+<div id="tap-hint">指でなぞって斬れ！<br>同時にたくさん斬るとコンボボーナス</div>
+<div id="banner"><div class="big"></div><div class="sub"></div></div>
+<div id="toast"></div>
+<a id="toplink" href="../index.html">← トップへ戻る</a>
+<div class="corner-btns"><button class="icon-btn" id="btn-pause" aria-label="ポーズ">⏸</button><button class="icon-btn" id="btn-mute" aria-label="サウンド切替">🔊</button></div>
 
-      /* ---------- HUD ---------- */
-      #hud{
-        position:absolute; top:0; left:0; right:0; z-index:5;
-        padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 0;
-        display:none; pointer-events:none;
-      }
-      #hud.on{ display:block; }
-      .hud-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-      .hud-left,.hud-right{ display:flex; flex-direction:column; gap:2px; }
-      .hud-right{ align-items:flex-end; text-align:right; }
-      .hud-label{ font-size:11px; letter-spacing:.18em; color:var(--paper-dim); }
-      #hud-score{ font-size:clamp(26px,6vw,40px); font-weight:800; line-height:1; color:#fff; text-shadow:0 2px 14px rgba(0,0,0,.55); font-variant-numeric:tabular-nums; }
-      #hud-best{ font-size:12px; color:var(--paper-dim); font-variant-numeric:tabular-nums; }
-      #hud-lives{ font-size:clamp(18px,4.5vw,24px); letter-spacing:.12em; line-height:1.1; }
-      #hud-lives .heart{ color:var(--shu); text-shadow:0 0 10px rgba(224,71,47,.6); }
-      #hud-lives .heart.off{ color:rgba(244,236,217,.18); text-shadow:none; }
-      #hud-level{ font-size:13px; color:var(--gold-bright); font-weight:700; letter-spacing:.08em; }
-      #hud-next{ font-size:12px; color:var(--paper-dim); font-variant-numeric:tabular-nums; }
-      #hud-next b{ color:var(--gold-bright); }
-      #hud-combo{
-        position:absolute; left:50%; top:16%; transform:translateX(-50%);
-        text-align:center; opacity:0; transition:opacity .15s;
-      }
-      #hud-combo.on{ opacity:1; }
-      #hud-combo .num{
-        font-size:clamp(34px,9vw,58px); font-weight:900; line-height:1; color:var(--gold-bright);
-        text-shadow:0 0 22px rgba(233,188,69,.55), 0 3px 0 rgba(0,0,0,.35);
-        font-variant-numeric:tabular-nums;
-      }
-      #hud-combo .lbl{ font-size:12px; letter-spacing:.3em; color:var(--paper); }
-      #hud-combo .mult{ font-size:14px; font-weight:800; color:#fff; margin-top:2px; }
-      #hud-combo.pop .num{ animation:comboPop .18s ease-out; }
-      @keyframes comboPop{ 0%{ transform:scale(1.35);} 100%{ transform:scale(1);} }
+<div class="overlay on" id="ov-start">
+  <div class="panel">
+    <div class="title-jp">投げ物<span class="accent">斬り</span></div>
+    <div class="title-rule"></div>
+    <p class="tagline">次々に投げ込まれる果物を、<b>指でなぞって真っ二つ！</b><br>一振りでまとめて斬るほど、爽快で高得点。</p>
+    <p class="howto"><b>操作：</b>画面をスワイプ（ドラッグ）して斬る。タップでも斬れる。<br>果物を落とすとライフ−1。💣爆弾を斬るとライフ−1＆コンボ消滅。<br>金の果物は高得点＋スローモーション。3つ同時斬りで大ボーナス！</p>
+    <div class="fruit-legend"><span>🍉 スイカ 50点</span><span>🍎 りんご 30点</span><span>🍊 みかん 30点</span><span>⭐ 金の果物 150点</span><span>💣 爆弾 注意</span></div>
+    <button class="btn-main" id="btn-start">斬り始める</button>
+    <div class="start-best" id="start-best"></div>
+    <div class="sect-title">― 刀を選ぶ ―</div><div id="sword-row"></div>
+    <details class="missions" id="missions-box"><summary>ミッション <span class="cnt" id="missions-cnt"></span></summary><ul id="missions-list"></ul></details>
+  </div>
+</div>
 
-      /* ---------- corner buttons ---------- */
-      .corner-btns{
-        position:absolute; right:10px; bottom:calc(env(safe-area-inset-bottom,0px) + 10px); z-index:8;
-        display:flex; gap:8px;
-      }
-      .icon-btn{
-        width:44px; height:44px; min-height:44px; border-radius:50%;
-        border:1px solid var(--line); background:rgba(10,14,34,.72); color:var(--paper);
-        font-size:19px; display:flex; align-items:center; justify-content:center; padding:0;
-        backdrop-filter:blur(4px);
-      }
-      .icon-btn:active{ transform:scale(.94); }
-      #toplink{
-        position:absolute; left:12px; bottom:calc(env(safe-area-inset-bottom,0px) + 12px); z-index:8;
-        color:var(--paper-dim); font-size:12px; text-decoration:none;
-        padding:10px 6px; letter-spacing:.06em;
-      }
-      #toplink:hover{ color:var(--gold-bright); }
-
-      #tap-hint{
-        position:absolute; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 64px); transform:translateX(-50%);
-        z-index:4; font-size:12px; letter-spacing:.24em; color:rgba(244,236,217,.5);
-        display:none; pointer-events:none; white-space:nowrap;
-      }
-      #tap-hint.on{ display:block; animation:hintPulse 1.6s ease-in-out infinite; }
-      @keyframes hintPulse{ 0%,100%{ opacity:.45;} 50%{ opacity:1;} }
-
-      /* ---------- announcement banner ---------- */
-      #banner{
-        position:absolute; left:0; right:0; top:30%; z-index:6; text-align:center; pointer-events:none;
-        opacity:0;
-      }
-      #banner.show{ animation:bannerIn 1.6s ease-out forwards; }
-      #banner .big{
-        font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-weight:700;
-        font-size:clamp(30px,8vw,54px); letter-spacing:.22em; color:var(--gold-bright);
-        text-shadow:0 0 30px rgba(233,188,69,.5), 0 3px 0 rgba(0,0,0,.4);
-      }
-      #banner .sub{ font-size:clamp(13px,3.4vw,17px); letter-spacing:.2em; color:var(--paper); margin-top:6px; }
-      #banner.danger .big{ color:#ff6a55; text-shadow:0 0 30px rgba(224,71,47,.6), 0 3px 0 rgba(0,0,0,.4); }
-      @keyframes bannerIn{
-        0%{ opacity:0; transform:scale(1.25); }
-        12%{ opacity:1; transform:scale(1); }
-        78%{ opacity:1; }
-        100%{ opacity:0; transform:scale(.98); }
-      }
-
-      /* ---------- toast ---------- */
-      #toast{
-        position:absolute; left:50%; bottom:22%; transform:translateX(-50%) translateY(16px); z-index:9;
-        background:rgba(12,17,41,.92); border:1px solid var(--gold); color:var(--gold-bright);
-        padding:10px 20px; border-radius:999px; font-size:14px; font-weight:700; letter-spacing:.08em;
-        opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; white-space:nowrap;
-        box-shadow:0 8px 30px rgba(0,0,0,.5);
-      }
-      #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-
-      /* ---------- overlays ---------- */
-      .overlay{
-        position:absolute; inset:0; z-index:10; display:none;
-        align-items:center; justify-content:center; padding:18px;
-        background:radial-gradient(90% 70% at 50% 38%, rgba(19,27,61,.55), rgba(7,10,24,.88));
-        overflow-y:auto;
-      }
-      .overlay.on{ display:flex; }
-      .panel{ width:min(560px,100%); text-align:center; margin:auto; padding:10px 0 6px; }
-      .title-jp{
-        font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-weight:700;
-        font-size:clamp(40px,10.5vw,72px); letter-spacing:.12em; line-height:1.15; color:#fff;
-        white-space:nowrap;
-        text-shadow:0 0 34px rgba(233,188,69,.35), 0 4px 0 rgba(0,0,0,.45);
-      }
-      .title-jp .accent{ color:var(--shu); }
-      .title-rule{
-        width:min(300px,70%); height:2px; margin:14px auto 10px;
-        background:linear-gradient(90deg, transparent, var(--gold), transparent);
-      }
-      .tagline{ font-size:clamp(13px,3.6vw,16px); color:var(--paper); letter-spacing:.1em; line-height:1.9; }
-      .tagline b{ color:var(--gold-bright); }
-      .howto{ font-size:12.5px; color:var(--paper-dim); letter-spacing:.06em; line-height:1.8; margin-top:4px; }
-
-      .btn-main{
-        display:inline-block; margin-top:22px; padding:15px 52px; border:none; border-radius:6px;
-        background:linear-gradient(180deg, #f0644a, var(--shu) 55%, #b62f1e);
-        color:#fff; font-size:20px; font-weight:800; letter-spacing:.3em; text-indent:.3em;
-        box-shadow:0 10px 26px rgba(224,71,47,.4), inset 0 1px 0 rgba(255,255,255,.35);
-        transition:transform .08s;
-      }
-      .btn-main:active{ transform:scale(.96); }
-      .btn-sub{
-        display:inline-block; margin-top:12px; padding:10px 26px; border-radius:6px;
-        background:transparent; border:1px solid var(--line); color:var(--paper);
-        font-size:14px; letter-spacing:.14em;
-      }
-      .btn-sub:active{ transform:scale(.96); }
-      .start-best{ margin-top:16px; font-size:13px; color:var(--paper-dim); letter-spacing:.1em; }
-      .start-best b{ color:var(--gold-bright); font-size:16px; }
-
-      /* sword select */
-      .sect-title{ margin:26px 0 10px; font-size:12px; letter-spacing:.3em; color:var(--paper-dim); }
-      #sword-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-      .sword-chip{
-        border:1px solid rgba(244,236,217,.22); background:rgba(255,255,255,.04); color:var(--paper);
-        border-radius:8px; padding:9px 12px; min-width:96px; text-align:center;
-      }
-      .sword-chip .sw{ display:block; height:6px; border-radius:3px; margin-bottom:7px; }
-      .sword-chip .nm{ font-size:14px; font-weight:700; letter-spacing:.06em; }
-      .sword-chip .req{ display:block; font-size:10.5px; color:var(--paper-dim); margin-top:2px; }
-      .sword-chip.sel{ border-color:var(--gold); background:rgba(233,188,69,.12); box-shadow:0 0 0 1px var(--gold) inset; }
-      .sword-chip.locked{ opacity:.45; }
-      .sword-chip:not(.locked):active{ transform:scale(.96); }
-
-      /* missions */
-      details.missions{
-        margin:22px auto 0; width:min(440px,100%); text-align:left;
-        border:1px solid rgba(244,236,217,.16); border-radius:10px; background:rgba(255,255,255,.03);
-      }
-      details.missions summary{
-        padding:12px 16px; font-size:14px; letter-spacing:.14em; color:var(--paper);
-        list-style:none; display:flex; justify-content:space-between; align-items:center; min-height:44px;
-      }
-      details.missions summary::-webkit-details-marker{ display:none; }
-      details.missions summary .cnt{ color:var(--gold-bright); font-size:12.5px; }
-      details.missions ul{ margin:0; padding:2px 16px 14px; list-style:none; }
-      details.missions li{
-        padding:7px 0 7px 26px; position:relative; font-size:13.5px; color:var(--paper-dim);
-        border-top:1px solid rgba(244,236,217,.07);
-      }
-      details.missions li::before{
-        content:""; position:absolute; left:2px; top:9px; width:14px; height:14px; border-radius:3px;
-        border:1.5px solid rgba(244,236,217,.35);
-      }
-      details.missions li.done{ color:var(--paper); }
-      details.missions li.done::before{
-        content:"✓"; border-color:var(--gold); background:var(--gold); color:#231a02;
-        font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; line-height:1;
-      }
-      details.missions li .prog{ float:right; font-size:12px; color:var(--paper-dim); font-variant-numeric:tabular-nums; }
-
-      /* game over */
-      .over-title{
-        font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-weight:700;
-        font-size:clamp(34px,9vw,54px); letter-spacing:.2em; color:#fff;
-        text-shadow:0 0 26px rgba(224,71,47,.45);
-      }
-      #over-rank{
-        font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
-        font-size:clamp(56px,15vw,92px); font-weight:700; line-height:1.1; color:var(--gold-bright);
-        text-shadow:0 0 34px rgba(233,188,69,.55);
-      }
-      .rank-lbl{ font-size:11px; letter-spacing:.4em; color:var(--paper-dim); }
-      #over-score{ font-size:clamp(30px,8vw,44px); font-weight:800; color:#fff; margin-top:6px; font-variant-numeric:tabular-nums; }
-      #over-newbest{ color:var(--gold-bright); font-weight:800; letter-spacing:.2em; font-size:14px; min-height:20px; }
-      .over-stats{
-        display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:16px auto 0;
-        max-width:400px;
-      }
-      .over-stats .stat{
-        border:1px solid rgba(244,236,217,.15); border-radius:8px; padding:8px 14px; min-width:92px;
-        background:rgba(255,255,255,.03); flex:1 1 40%;
-      }
-      .over-stats .stat .v{ font-size:19px; font-weight:800; color:#fff; font-variant-numeric:tabular-nums; }
-      .over-stats .stat .k{ font-size:10.5px; color:var(--paper-dim); letter-spacing:.14em; margin-top:2px; }
-      .pause-title{
-        font-family:"Hiragino Mincho ProN","Yu Mincho",serif; font-size:clamp(28px,7vw,40px);
-        letter-spacing:.3em; color:#fff; font-weight:700;
-      }
-      .btn-stack{ display:flex; flex-direction:column; align-items:center; gap:4px; }
-      @media (prefers-reduced-motion: reduce){
-        #banner.show{ animation-duration:.4s; }
-        #tap-hint.on{ animation:none; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="app">
-      <canvas id="game"></canvas>
-
-      <div id="hud">
-        <div class="hud-row">
-          <div class="hud-left">
-            <div class="hud-label">スコア</div>
-            <div id="hud-score">0</div>
-            <div id="hud-best">ベスト 0</div>
-          </div>
-          <div class="hud-right">
-            <div id="hud-lives"></div>
-            <div id="hud-level">レベル 1</div>
-            <div id="hud-next"></div>
-          </div>
-        </div>
-        <div id="hud-combo">
-          <div class="num">0</div>
-          <div class="lbl">コンボ</div>
-          <div class="mult"></div>
-        </div>
-      </div>
-
-      <div id="tap-hint">画面をタップして斬る！</div>
-      <div id="banner"><div class="big"></div><div class="sub"></div></div>
-      <div id="toast"></div>
-
-      <a id="toplink" href="../index.html">← トップへ戻る</a>
-      <div class="corner-btns">
-        <button class="icon-btn" id="btn-pause" aria-label="ポーズ" title="ポーズ (P)">⏸</button>
-        <button class="icon-btn" id="btn-mute" aria-label="サウンド切替" title="サウンド切替">🔊</button>
-      </div>
-
-      <!-- スタート画面 -->
-      <div class="overlay on" id="ov-start">
-        <div class="panel">
-          <div class="title-jp">タイミング<span class="accent">斬り</span></div>
-          <div class="title-rule"></div>
-          <p class="tagline">往復する刃を、<b>金ゾーン</b>で止めろ。<br />狙うほど旨く、外すほど痛い。</p>
-          <p class="howto">タップ／クリック／スペースキーで斬る。中央の金が300点、赤が100点、青が30点。</p>
-          <button class="btn-main" id="btn-start">斬り始める</button>
-          <div class="start-best" id="start-best"></div>
-
-          <div class="sect-title">― 刀を選ぶ ―</div>
-          <div id="sword-row"></div>
-
-          <details class="missions" id="missions-box">
-            <summary>ミッション <span class="cnt" id="missions-cnt"></span></summary>
-            <ul id="missions-list"></ul>
-          </details>
-        </div>
-      </div>
-
-      <!-- ゲームオーバー画面 -->
-      <div class="overlay" id="ov-over">
-        <div class="panel">
-          <div class="over-title">終 之 斬</div>
-          <div class="rank-lbl" style="margin-top:14px;">評価</div>
-          <div id="over-rank">C</div>
-          <div id="over-newbest"></div>
-          <div id="over-score">0</div>
-          <div class="over-stats">
-            <div class="stat"><div class="v" id="st-combo">0</div><div class="k">最大コンボ</div></div>
-            <div class="stat"><div class="v" id="st-gold">0</div><div class="k">金ゾーン</div></div>
-            <div class="stat"><div class="v" id="st-level">1</div><div class="k">到達レベル</div></div>
-            <div class="stat"><div class="v" id="st-best">0</div><div class="k">ベスト</div></div>
-          </div>
-          <div class="btn-stack">
-            <button class="btn-main" id="btn-retry">もう一度</button>
-            <button class="btn-sub" id="btn-tomenu">メニューに戻る</button>
-          </div>
-          <p class="howto">Rキー／タップでも再戦できます</p>
-        </div>
-      </div>
-
-      <!-- ポーズ画面 -->
-      <div class="overlay" id="ov-pause">
-        <div class="panel">
-          <div class="pause-title">一時停止</div>
-          <div class="btn-stack">
-            <button class="btn-main" id="btn-resume">再開する</button>
-            <button class="btn-sub" id="btn-restart2">最初から</button>
-            <button class="btn-sub" id="btn-quit2">メニューに戻る</button>
-          </div>
-          <p class="howto">Pキーでも再開できます</p>
-        </div>
-      </div>
+<div class="overlay" id="ov-over">
+  <div class="panel">
+    <div class="over-title">終 之 斬</div>
+    <div class="rank-lbl" style="margin-top:14px">評価</div><div id="over-rank">C</div><div id="over-newbest"></div><div id="over-score">0</div>
+    <div class="over-stats">
+      <div class="stat"><div class="v" id="st-sliced">0</div><div class="k">斬った数</div></div>
+      <div class="stat"><div class="v" id="st-combo">0</div><div class="k">最大連続斬り</div></div>
+      <div class="stat"><div class="v" id="st-multi">0</div><div class="k">最大同時斬り</div></div>
+      <div class="stat"><div class="v" id="st-best">0</div><div class="k">ベスト</div></div>
     </div>
+    <div class="btn-stack"><button class="btn-main" id="btn-retry">もう一度斬る</button><button class="btn-sub" id="btn-tomenu">メニューに戻る</button></div>
+    <p class="howto">Rキー／画面タップでもすぐ再戦できます</p>
+  </div>
+</div>
 
-    <script>
-    "use strict";
-    /* ============================================================
-       タイミング斬り — timing action game
-       ============================================================ */
-    var $ = function(id){ return document.getElementById(id); };
-    var canvas = $("game"), ctx = canvas.getContext("2d");
-    var W = 0, H = 0, DPR = 1;
+<div class="overlay" id="ov-pause">
+  <div class="panel"><div class="pause-title">一時停止</div><div class="btn-stack"><button class="btn-main" id="btn-resume">再開する</button><button class="btn-sub" id="btn-restart2">最初から</button><button class="btn-sub" id="btn-quit2">メニューに戻る</button></div><p class="howto">Pキーでも再開できます</p></div>
+</div>
+</div>
 
-    function resize(){
-      DPR = Math.min(window.devicePixelRatio || 1, 2);
-      W = window.innerWidth; H = window.innerHeight;
-      canvas.width = Math.round(W * DPR);
-      canvas.height = Math.round(H * DPR);
-      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    }
-    window.addEventListener("resize", resize);
-    resize();
+<script>
+"use strict";
+var $=function(id){return document.getElementById(id)};
+var canvas=$("game"),ctx=canvas.getContext("2d");
+var W=0,H=0,DPR=1;
+function resize(){DPR=Math.min(window.devicePixelRatio||1,2);W=window.innerWidth;H=window.innerHeight;canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);ctx.setTransform(DPR,0,0,DPR,0,0)}
+window.addEventListener("resize",resize);resize();
 
-    /* ---------------- 保存データ ---------------- */
-    var SAVE_KEY = "timing-zan-save-v1";
-    var save = {
-      best: 0, total: 0, unlocked: 1, sword: 0, muted: false,
-      missions: {}, stats: { gold: 0, maxCombo: 0, maxLevel: 0 }
-    };
-    try {
-      var raw = localStorage.getItem(SAVE_KEY);
-      if (raw) {
-        var p = JSON.parse(raw);
-        if (p && typeof p === "object") {
-          save.best = p.best|0; save.total = p.total|0;
-          save.unlocked = Math.max(1, Math.min(5, p.unlocked|0 || 1));
-          save.sword = Math.max(0, Math.min(4, p.sword|0));
-          save.muted = !!p.muted;
-          save.missions = p.missions || {};
-          if (p.stats) {
-            save.stats.gold = p.stats.gold|0;
-            save.stats.maxCombo = p.stats.maxCombo|0;
-            save.stats.maxLevel = p.stats.maxLevel|0;
-          }
+var SAVE_KEY="timing-zan-save-v2";
+var save={best:0,total:0,unlocked:1,sword:0,muted:false,missions:{},stats:{gold:0,maxCombo:0,maxLevel:0,totalSliced:0,maxMulti:0}};
+try{var raw=localStorage.getItem(SAVE_KEY);if(!raw) raw=localStorage.getItem("timing-zan-save-v1"); if(raw){var p=JSON.parse(raw); if(p){save.best=p.best|0;save.total=p.total|0;save.unlocked=Math.max(1,Math.min(5,p.unlocked|0||1));save.sword=Math.max(0,Math.min(4,p.sword|0));save.muted=!!p.muted;save.missions=p.missions||{}; if(p.stats){save.stats.gold=p.stats.gold|0;save.stats.maxCombo=p.stats.maxCombo|0;save.stats.maxLevel=p.stats.maxLevel|0;save.stats.totalSliced=p.stats.totalSliced|0;save.stats.maxMulti=p.stats.maxMulti|0}}}}catch(e){}
+function persist(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(save))}catch(e){}}
+
+var SWORDS=[
+{name:"木刀",req:0,color:"#d99a4e",glow:"rgba(217,154,78,.6)",trail:"rgba(217,154,78,",width:14,bonus:1},
+{name:"鉄刀",req:500,color:"#e8ecf2",glow:"rgba(220,230,255,.7)",trail:"rgba(220,235,255,",width:18,bonus:1.1},
+{name:"鋼の刀",req:1500,color:"#7fb2e8",glow:"rgba(127,178,232,.7)",trail:"rgba(127,178,232,",width:22,bonus:1.2},
+{name:"名刀",req:3000,color:"#ff5a3c",glow:"rgba(255,90,60,.75)",trail:"rgba(255,90,60,",width:26,bonus:1.35},
+{name:"伝説の刀",req:6000,color:"#ffd968",glow:"rgba(255,217,104,.9)",trail:"rgba(255,217,104,",width:32,bonus:1.6}
+];
+var MISSIONS=[
+{id:"slice50",text:"果物を合計50個斬る",prog:function(){return[save.stats.totalSliced,50]}},
+{id:"combo5",text:"5連続斬りを達成する",prog:function(){return[save.stats.maxCombo,5]}},
+{id:"multi3",text:"一振りで3個同時斬り",prog:function(){return[save.stats.maxMulti,3]}},
+{id:"score2000",text:"1ゲームで2000点取る",prog:function(){return[save.best,2000]}},
+{id:"slice200",text:"果物を合計200個斬る",prog:function(){return[save.stats.totalSliced,200]}},
+{id:"gold10",text:"金の果物を合計10個斬る",prog:function(){return[save.stats.gold,10]}},
+{id:"combo12",text:"12連続斬りを達成する",prog:function(){return[save.stats.maxCombo,12]}},
+{id:"score5000",text:"1ゲームで5000点取る",prog:function(){return[save.best,5000]}},
+{id:"legend",text:"伝説の刀を解放する",prog:function(){return[save.unlocked>=5?1:0,1]}}
+];
+function checkMissions(announce){var newly=[];for(var i=0;i<MISSIONS.length;i++){var m=MISSIONS[i];if(save.missions[m.id])continue;var pr=m.prog();if(pr[0]>=pr[1]){save.missions[m.id]=true;newly.push(m)}}if(newly.length){persist();if(announce)showToast("ミッション達成！「"+newly[0].text+"」")}return newly.length>0}
+
+/* Audio */
+var AC=null,masterGain=null,bgmGain=null,noiseBuf=null,muted=save.muted;
+function audioInit(){if(AC){if(AC.state==="suspended")AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)();masterGain=AC.createGain();masterGain.gain.value=muted?0:1;masterGain.connect(AC.destination);bgmGain=AC.createGain();bgmGain.gain.value=0.14;bgmGain.connect(masterGain);var len=AC.sampleRate;noiseBuf=AC.createBuffer(1,len,AC.sampleRate);var d=noiseBuf.getChannelData(0);for(var i=0;i<len;i++)d[i]=Math.random()*2-1;bgmStart()}catch(e){AC=null}}
+function tone(f,dur,type,vol,when,slide,dest){if(!AC)return;var t=AC.currentTime+(when||0);var o=AC.createOscillator(),g=AC.createGain();o.type=type||"sine";o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+0.008);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g);g.connect(dest||masterGain);o.start(t);o.stop(t+dur+0.05)}
+function noiseS(dur,vol,freq,q,when,type){if(!AC)return;var t=AC.currentTime+(when||0);var src=AC.createBufferSource();src.buffer=noiseBuf;src.loop=true;var f=AC.createBiquadFilter();f.type=type||"bandpass";f.frequency.value=freq;f.Q.value=q||1;var g=AC.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);src.connect(f);f.connect(g);g.connect(masterGain);src.start(t);src.stop(t+dur+0.05)}
+function sfxWhoosh(speed){noiseS(0.14,0.35+Math.min(.3,speed/3000),1800+speed*0.6,0.8);tone(700+speed*0.2,0.08,"sawtooth",0.04,0,180)}
+function sfxSlice(combo){var base=500+combo*40; tone(base,0.12,"triangle",0.28); tone(base*1.5,0.14,"sine",0.22,0.02); noiseS(0.18,0.5,3200,0.7); noiseS(0.22,0.3,700,1,0.01,"lowpass")}
+function sfxGold(){[1318,1760,2217,2637].forEach(function(f,i){tone(f,0.28,"sine",0.26,i*0.05)});noiseS(0.25,0.18,6500,2)}
+function sfxBomb(){tone(90,0.5,"sawtooth",0.5,0,38);noiseS(0.55,0.7,180,0.7,0,"lowpass");noiseS(0.3,0.4,900,0.6,0.02)}
+function sfxMiss(){tone(180,0.25,"sawtooth",0.22,0,70)}
+function sfxLevel(){[659,880,1318].forEach(function(f,i){tone(f,0.2,"triangle",0.24,i*0.08)})}
+function sfxUnlock(){[523,659,784,1046,1318].forEach(function(f,i){tone(f,0.22,"triangle",0.24,i*0.07)})}
+function sfxOver(){tone(392,0.3,"sawtooth",0.2,0,380);tone(311,0.34,"sawtooth",0.2,0.22,300);tone(233,0.6,"sawtooth",0.22,0.46,110)}
+function sfxFever(){[784,988,1175,1568].forEach(function(f,i){tone(f,0.18,"square",0.16,i*0.06)})}
+var bgmTimer=null,bgmStep=0,bgmNext=0;var BGM_NOTES=[293.66,311.13,392,440,466.16,587.33,622.25,783.99];var BGM_MELODY=[4,-1,2,3,4,-1,5,4,3,2,3,-1,1,2,0,-1,4,-1,2,3,5,4,3,2,3,-1,2,1,0,1,2,-1];
+function bgmStart(){if(!AC||bgmTimer)return;bgmNext=AC.currentTime+0.1;bgmStep=0;bgmTimer=setInterval(function(){if(!AC)return;var spb=60/138/2;while(bgmNext<AC.currentTime+0.18){var s=bgmStep%32,dt=Math.max(0,bgmNext-AC.currentTime);var n=BGM_MELODY[s];if(n>=0)tone(BGM_NOTES[n],0.22,"triangle",0.5,dt,null,bgmGain);if(s%8===0)tone(73.42,0.5,"sine",0.85,dt,null,bgmGain);if(s%8===4)tone(110,0.4,"sine",0.6,dt,null,bgmGain);bgmNext+=spb;bgmStep++}},60)}
+function setMuted(m){muted=m;save.muted=m;persist();if(masterGain)masterGain.gain.value=m?0:1;$("btn-mute").textContent=m?"🔇":"🔊"}
+
+/* Game state */
+var state="menu";
+var score=0,lives=3,level=1,slicedCount=0,chainCombo=0,maxComboRun=0,maxMultiRun=0,goldRun=0;
+var chainTimer=0,fever=0,feverActive=0,spawnTimer=0,elapsed=0,totalAtStart=0;
+var freezeT=0,slowT=0,shake=0,flashA=0,flashColor="255,255,255",overT=-1,startedAt=0;
+var objects=[],halves=[],particles=[],floats=[],splats=[],trailPts=[];
+var pointerDown=false,lastPointer=null,swipeSliced=0,swipeId=0,lastWhoosh=0;
+
+var FRUITS=[
+{type:"watermelon",emoji:"🍉",r:46,score:50,color:"#2fa84f",inner:"#ff3b4e",juice:"#ff4757",stripe:"#166534"},
+{type:"apple",emoji:"🍎",r:36,score:30,color:"#e5322d",inner:"#fff1d6",juice:"#ff6b5e",stripe:"#b91c1c"},
+{type:"orange",emoji:"🍊",r:36,score:30,color:"#ff8a1e",inner:"#ffcc66",juice:"#ffa726",stripe:"#e66a00"},
+{type:"melon",emoji:"🍈",r:40,score:40,color:"#a8d86e",inner:"#e8ffb0",juice:"#b7e07a",stripe:"#6aa84f"},
+{type:"peach",emoji:"🍑",r:34,score:35,color:"#ff9eb5",inner:"#ffe3ec",juice:"#ff9eb5",stripe:"#e86a8a"},
+{type:"kiwi",emoji:"🥝",r:32,score:35,color:"#6a9a3a",inner:"#b6e388",juice:"#8bc34a",stripe:"#3e6b1e"}
+];
+function comboMult(c){if(c>=15)return 3;if(c>=10)return 2.2;if(c>=6)return 1.7;if(c>=3)return 1.3;return 1}
+function effectiveTotal(){return totalAtStart+score}
+function nextSwordInfo(){for(var i=0;i<SWORDS.length;i++)if(SWORDS[i].req>effectiveTotal())return SWORDS[i];return null}
+
+var toastTimer=null;function showToast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove("show")},2400)}
+function showBanner(big,sub,danger){var b=$("banner");b.querySelector(".big").textContent=big;b.querySelector(".sub").textContent=sub||"";b.classList.toggle("danger",!!danger);b.classList.remove("show");void b.offsetWidth;b.classList.add("show")}
+function spawnSparks(x,y,color,n,power){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,sp=(0.3+Math.random()*0.9)*(power||320);particles.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-80,life:0.4+Math.random()*0.5,t:0,color:color,size:2+Math.random()*4})}}
+function spawnJuice(x,y,color,n){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,sp=80+Math.random()*380;particles.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-120,life:0.5+Math.random()*0.6,t:0,color:color,size:3+Math.random()*5,juice:true})}}
+function spawnFloat(x,y,text,color,size){floats.push({x:x,y:y,text:text,color:color,size:size||26,t:0,life:1,scale:0.6})}
+function addSplat(x,y,color,r){splats.push({x:x,y:y,color:color,r:r||38,t:0,life:3.2});if(splats.length>28)splats.shift()}
+
+function renderLives(){var s="";for(var i=0;i<3;i++)s+='<span class="heart'+(i<lives?"":" off")+'">♥</span>';$("hud-lives").innerHTML=s}
+function updateHUD(){$("hud-score").textContent=score.toLocaleString();$("hud-best").textContent="ベスト "+Math.max(save.best,score).toLocaleString();$("hud-level").textContent="WAVE "+level+(feverActive>0?"  🔥FEVER!":"");var nx=nextSwordInfo();if(nx)$("hud-next").innerHTML="次の刀「"+nx.name+"」まで あと <b>"+(nx.req-effectiveTotal()).toLocaleString()+"点</b>";else $("hud-next").textContent="全ての刀を解放済み";$("hud-sliced").textContent=slicedCount;renderLives();$("fever-bar").style.width=Math.min(100,fever)+"%";$("fever-label").textContent=feverActive>0?"🔥 FEVER中！ 得点×2":"FEVERまで "+Math.max(0,100-Math.round(fever))+"%";var c=$("hud-combo");if(chainCombo>=2){c.classList.add("on");c.querySelector(".num").textContent=chainCombo;c.querySelector(".mult").textContent="得点 ×"+comboMult(chainCombo).toFixed(1)+(feverActive>0?" × FEVER 2":"")}else c.classList.remove("on")}
+function popCombo(){var c=$("hud-combo");c.classList.remove("pop");void c.offsetWidth;c.classList.add("pop")}
+
+function renderMenu(){$("start-best").innerHTML=save.best>0?"ベストスコア <b>"+save.best.toLocaleString()+"</b> 点 ／ 累計 "+save.total.toLocaleString()+" 点 ／ 斬った果物 "+save.stats.totalSliced+"個":"まずは一振り。3個同時斬りの快感を味わおう。";var row=$("sword-row");row.innerHTML="";SWORDS.forEach(function(sw,i){var unlocked=i<save.unlocked;var b=document.createElement("button");b.className="sword-chip"+(unlocked?"":" locked")+(save.sword===i&&unlocked?" sel":"");b.innerHTML='<span class="sw" style="background:linear-gradient(90deg,'+sw.color+',#fff8,'+sw.color+')"></span><span class="nm">'+sw.name+'</span><span class="req">'+(unlocked?(save.sword===i?"装備中 · 得点×"+sw.bonus:"タップで装備 · 得点×"+sw.bonus):"累計"+sw.req.toLocaleString()+"点で解放")+'</span>';if(unlocked)b.addEventListener("click",function(){save.sword=i;persist();renderMenu();showToast("「"+sw.name+"」を装備した")});row.appendChild(b)});var done=0,ul=$("missions-list");ul.innerHTML="";MISSIONS.forEach(function(m){var isDone=!!save.missions[m.id];if(isDone)done++;var pr=m.prog();var li=document.createElement("li");if(isDone)li.className="done";li.innerHTML=m.text+(isDone?"":'<span class="prog">'+Math.min(pr[0],pr[1]).toLocaleString()+" / "+pr[1].toLocaleString()+"</span>");ul.appendChild(li)});$("missions-cnt").textContent=done+" / "+MISSIONS.length+" 達成"}
+
+function spawnObject(){
+  var roll=Math.random();
+  var isBomb=roll<Math.min(0.16,0.08+level*0.012);
+  var isGold=!isBomb && roll>0.94;
+  var base=isGold?{type:"gold",r:34,score:150,color:"#ffd928",inner:"#fff6a0",juice:"#ffd928",stripe:"#d4a017"}:FRUITS[Math.floor(Math.random()*FRUITS.length)];
+  var x=W*(0.18+Math.random()*0.64);
+  var vx=(W/2-x)*0.28+(Math.random()-0.5)*140;
+  var vy=-(H*0.92+Math.random()*H*0.28+level*8);
+  // convert vy feel: use px/s, gravity will be ~1450
+  vy=-(Math.sqrt(2*1450*(H*0.62+Math.random()*H*0.18)));
+  objects.push({x:x,y:H+50,vx:vx,vy:vy,r:base.r*(0.92+Math.random()*0.2),type:base.type||base.type,def:base,isBomb:isBomb,isGold:isGold,angle:Math.random()*Math.PI*2,va:(Math.random()-0.5)*4,scale:1});
+}
+function spawnWave(){
+  var count=1;
+  var r=Math.random();
+  if(elapsed>18 && r<0.28)count=2;
+  if(elapsed>38 && r<0.14)count=3;
+  if(feverActive>0 && Math.random()<0.35)count=Math.max(count,2);
+  for(var i=0;i<count;i++){ (function(idx){ setTimeout(function(){ if(state==="playing") spawnObject(); }, idx*90); })(i); }
+}
+
+function startGame(){
+  audioInit(); try{if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){})}catch(e){}
+  score=0;lives=3;level=1;slicedCount=0;chainCombo=0;maxComboRun=0;maxMultiRun=0;goldRun=0;chainTimer=0;fever=20;feverActive=0;spawnTimer=0.4;elapsed=0;freezeT=0;slowT=0;shake=0;flashA=0;overT=-1;
+  objects=[];halves=[];particles=[];floats=[];splats=[];trailPts=[];
+  totalAtStart=save.total;state="playing";startedAt=performance.now();
+  $("ov-start").classList.remove("on");$("ov-over").classList.remove("on");$("ov-pause").classList.remove("on");$("hud").classList.add("on");$("tap-hint").classList.add("on");
+  showBanner("斬！","投げ込まれる果物をなぞって斬れ！",false);
+  updateHUD();
+}
+function endGame(){
+  state="over";save.total+=score;var newBest=score>save.best;if(newBest)save.best=score;
+  if(maxComboRun>save.stats.maxCombo)save.stats.maxCombo=maxComboRun;
+  if(maxMultiRun>save.stats.maxMulti)save.stats.maxMulti=maxMultiRun;
+  if(level>save.stats.maxLevel)save.stats.maxLevel=level;
+  persist();checkMissions(false);
+  var rank=score>=5000?"S":score>=3200?"A":score>=1800?"B":score>=700?"C":"D";
+  $("over-rank").textContent=rank;$("over-score").textContent=score.toLocaleString()+" 点";$("over-newbest").textContent=newBest&&score>0?"★ ベスト更新！ ★":"";
+  $("st-sliced").textContent=slicedCount;$("st-combo").textContent=maxComboRun;$("st-multi").textContent=maxMultiRun;$("st-best").textContent=save.best.toLocaleString();
+  $("hud").classList.remove("on");$("tap-hint").classList.remove("on");$("ov-over").classList.add("on");renderMenu();sfxOver();
+}
+function toMenu(){state="menu";objects=[];halves=[];$("ov-over").classList.remove("on");$("ov-pause").classList.remove("on");$("hud").classList.remove("on");$("tap-hint").classList.remove("on");$("ov-start").classList.add("on");renderMenu()}
+function setPause(on){if(on&&state==="playing"){state="paused";$("ov-pause").classList.add("on")}else if(!on&&state==="paused"){state="playing";$("ov-pause").classList.remove("on")}}
+function checkUnlocks(){var eff=effectiveTotal(),target=0;for(var i=0;i<SWORDS.length;i++)if(eff>=SWORDS[i].req)target=i+1;if(target>save.unlocked){save.unlocked=target;persist();var sw=SWORDS[target-1];showBanner("刀 解放","「"+sw.name+"」を手に入れた！ 得点×"+sw.bonus);sfxUnlock();checkMissions(true)}}
+
+function sliceObject(obj,angle){
+  var idx=objects.indexOf(obj); if(idx<0)return; objects.splice(idx,1);
+  var sw=SWORDS[save.sword];
+  if(obj.isBomb){
+    lives--; chainCombo=0; chainTimer=0; fever=Math.max(0,fever-35); shake=26; flashA=0.85; flashColor="255,60,30"; freezeT=0.12;
+    spawnSparks(obj.x,obj.y,"#ff6a00",36,520); spawnSparks(obj.x,obj.y,"#222",20,300);
+    spawnFloat(obj.x,obj.y-20,"爆弾！","#ff5a3c",30); sfxBomb(); renderLives();
+    showBanner("爆発！","爆弾を斬ってしまった…",true);
+    if(lives<=0) overT=0.9;
+    updateHUD(); return;
+  }
+  // normal / gold
+  slicedCount++; save.stats.totalSliced++; swipeSliced++;
+  chainCombo++; chainTimer=1.15; if(chainCombo>maxComboRun)maxComboRun=chainCombo;
+  if(obj.isGold){goldRun++; save.stats.gold++; slowT=0.55; freezeT=0.09;}
+  else freezeT= obj.def.type==="watermelon"?0.07:0.045;
+  shake=Math.max(shake, obj.isGold?14:8+Math.min(10,chainCombo));
+  var mult=comboMult(chainCombo)*sw.bonus*(feverActive>0?2:1);
+  var pts=Math.round(obj.def.score*mult);
+  score+=pts;
+  fever=Math.min(100,fever+(obj.isGold?22:9+swipeSliced*2));
+  if(fever>=100 && feverActive<=0){feverActive=6; fever=100; showBanner("FEVER！","6秒間 得点2倍！ 果物ラッシュ！",false); sfxFever();}
+  // halves
+  var perp=angle+Math.PI/2;
+  for(var s=-1;s<=1;s+=2){
+    halves.push({x:obj.x,y:obj.y,vx:obj.vx+Math.cos(perp)*s*160+(Math.random()-0.5)*60,vy:obj.vy*0.35+Math.sin(perp)*s*80-40,angle:obj.angle,va:obj.va+s*3.5,r:obj.r,def:obj.def,isGold:obj.isGold,side:s,sliceAngle:angle,t:0,life:1.1});
+  }
+  spawnJuice(obj.x,obj.y,obj.def.juice, obj.isGold?30:20);
+  spawnSparks(obj.x,obj.y,obj.def.juice,10,260);
+  addSplat(obj.x,obj.y,obj.def.juice,obj.r*0.9);
+  spawnFloat(obj.x,obj.y-obj.r-8,"+"+pts+(obj.isGold?" GOLD!":""), obj.isGold?"#ffd968":"#ffffff", obj.isGold?32:24);
+  if(chainCombo>=3) spawnFloat(obj.x,obj.y+28,chainCombo+"連続斬り！","#ffd968",19);
+  sfxSlice(chainCombo); if(obj.isGold)sfxGold();
+  popCombo(); persist(); checkUnlocks(); checkMissions(true);
+  if(slicedCount%15===0){level++; showBanner("WAVE "+level,"投げる速さ＆数がアップ！",false); sfxLevel();}
+  if(performance.now()-startedAt>3000) $("tap-hint").classList.remove("on");
+  updateHUD();
+}
+function distToSegment(px,py,x1,y1,x2,y2){var dx=x2-x1,dy=y2-y1;var l2=dx*dx+dy*dy;if(l2===0)return Math.hypot(px-x1,py-y1);var t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2));return Math.hypot(px-(x1+t*dx),py-(y1+t*dy))}
+function trySliceSegment(x1,y1,x2,y2,speed){
+  var sw=SWORDS[save.sword]; var radiusBonus=sw.width;
+  var angle=Math.atan2(y2-y1,x2-x1);
+  var hitList=objects.slice();
+  for(var i=0;i<hitList.length;i++){var o=hitList[i]; if(distToSegment(o.x,o.y,x1,y1,x2,y2) < o.r+radiusBonus*0.55){ sliceObject(o,angle); }}
+}
+function endSwipe(){
+  if(swipeSliced>=3){
+    var bonus=swipeSliced*swipeSliced*15;
+    if(feverActive>0)bonus*=2;
+    score+=bonus; spawnFloat(W/2,H*0.38,swipeSliced+"個同時斬り！ +"+bonus,"#ffd968",30);
+    showBanner(swipeSliced+"個同時斬り！","ボーナス +"+bonus+"点",false);
+    shake=Math.max(shake,16); freezeT=Math.max(freezeT,0.09);
+    if(swipeSliced>maxMultiRun){maxMultiRun=swipeSliced; if(maxMultiRun>save.stats.maxMulti){save.stats.maxMulti=maxMultiRun; persist(); checkMissions(true);}}
+    tone(880,0.2,"triangle",0.3); tone(1320,0.25,"triangle",0.28,0.07);
+  } else if(swipeSliced>maxMultiRun){ maxMultiRun=swipeSliced; }
+  swipeSliced=0; updateHUD();
+}
+
+/* Update */
+var lastT=performance.now();
+function update(now){
+  var rawDt=Math.min(0.05,(now-lastT)/1000); lastT=now;
+  var timeScale=1;
+  if(freezeT>0){freezeT-=rawDt; timeScale=0.08;}
+  else if(slowT>0){slowT-=rawDt; timeScale=0.32;}
+  var dt=rawDt*timeScale;
+  if(state==="playing"){
+    elapsed+=dt;
+    spawnTimer-=dt;
+    var interval=Math.max(0.42, 1.05 - level*0.055 - elapsed*0.004);
+    if(feverActive>0) interval*=0.62;
+    if(spawnTimer<=0){spawnWave(); spawnTimer=interval*(0.75+Math.random()*0.5);}
+    if(chainTimer>0){chainTimer-=dt; if(chainTimer<=0){chainCombo=0; updateHUD();}}
+    if(feverActive>0){feverActive-=dt; fever=Math.max(0,feverActive/6*100); if(feverActive<=0)fever=35; updateHUD();}
+    else if(fever>0){fever=Math.max(15,fever-dt*1.2);}
+    // physics objects
+    for(var i=objects.length-1;i>=0;i--){var o=objects[i]; o.vy+=1450*dt; o.x+=o.vx*dt; o.y+=o.vy*dt; o.angle+=o.va*dt;
+      if(o.y>H+70 && o.vy>0){
+        objects.splice(i,1);
+        if(!o.isBomb){
+          lives--; chainCombo=0; shake=Math.max(shake,10); flashA=0.35; flashColor="224,60,40";
+          spawnFloat(o.x,H-90,"落とした…","#ff7a66",22); sfxMiss(); renderLives();
+          if(lives<=0) overT=0.7;
+          updateHUD();
         }
       }
-    } catch (e) {}
-    function persist(){
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {}
     }
+    if(overT>0){overT-=rawDt; if(overT<=0){overT=-1; endGame();}}
+  }
+  // halves & particles always animate (even during hitstop, slower)
+  var edt=rawDt*(freezeT>0?0.35: timeScale===0.32?0.6:1);
+  for(var h=halves.length-1;h>=0;h--){var hh=halves[h]; hh.t+=edt; hh.vy+=1450*edt; hh.x+=hh.vx*edt; hh.y+=hh.vy*edt; hh.angle+=hh.va*edt; if(hh.t>=hh.life||hh.y>H+80)halves.splice(h,1)}
+  for(var p=particles.length-1;p>=0;p--){var pp=particles[p]; pp.t+=edt; if(pp.t>=pp.life){particles.splice(p,1);continue} pp.vy+=620*edt; pp.x+=pp.vx*edt; pp.y+=pp.vy*edt}
+  for(var f=floats.length-1;f>=0;f--){var ff=floats[f]; ff.t+=rawDt; ff.y-=48*rawDt; ff.scale=Math.min(1.15,ff.scale+rawDt*3); if(ff.t>=ff.life)floats.splice(f,1)}
+  for(var s=splats.length-1;s>=0;s--){splats[s].t+=rawDt; if(splats[s].t>=splats[s].life)splats.splice(s,1)}
+  for(var t=trailPts.length-1;t>=0;t--){trailPts[t].t+=rawDt; if(trailPts[t].t>=0.22)trailPts.splice(t,1)}
+  if(shake>0)shake=Math.max(0,shake-rawDt*52);
+  if(flashA>0)flashA=Math.max(0,flashA-rawDt*1.7);
+  draw();
+  requestAnimationFrame(update);
+}
 
-    /* ---------------- 刀 ---------------- */
-    var SWORDS = [
-      { name: "木刀",     req: 0,    color: "#b98046", glow: "rgba(185,128,70,.55)",  trail: "rgba(185,128,70," },
-      { name: "鉄刀",     req: 500,  color: "#c8ccd4", glow: "rgba(200,204,212,.6)",  trail: "rgba(200,204,212," },
-      { name: "鋼の刀",   req: 1500, color: "#7fb2e8", glow: "rgba(127,178,232,.65)", trail: "rgba(127,178,232," },
-      { name: "名刀",     req: 3000, color: "#e0472f", glow: "rgba(224,71,47,.65)",   trail: "rgba(224,71,47," },
-      { name: "伝説の刀", req: 6000, color: "#ffd968", glow: "rgba(255,217,104,.8)",  trail: "rgba(255,217,104," }
-    ];
+/* Draw */
+function drawFruit(o){
+  ctx.save(); ctx.translate(o.x,o.y); ctx.rotate(o.angle);
+  if(o.isBomb){
+    ctx.shadowColor="rgba(0,0,0,.6)"; ctx.shadowBlur=12;
+    ctx.fillStyle="#1c1e26"; ctx.beginPath(); ctx.arc(0,0,o.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#3a3f4f"; ctx.beginPath(); ctx.arc(-o.r*0.3,-o.r*0.3,o.r*0.38,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0; ctx.strokeStyle="#8a6a3a"; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(0,-o.r); ctx.quadraticCurveTo(10,-o.r-14,18,-o.r-10); ctx.stroke();
+    ctx.fillStyle="#ffd028"; ctx.beginPath(); ctx.arc(19,-o.r-9,5+Math.random()*3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.font="900 "+Math.round(o.r*0.7)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("💣",0,2);
+  } else if(o.isGold){
+    ctx.shadowColor="rgba(255,217,40,.9)"; ctx.shadowBlur=26;
+    ctx.fillStyle=o.def.color; ctx.beginPath(); ctx.arc(0,0,o.r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0; ctx.fillStyle="#fff59d"; ctx.beginPath(); ctx.arc(-o.r*0.28,-o.r*0.28,o.r*0.42,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#7a5200"; ctx.font="900 "+Math.round(o.r*0.85)+"px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText("★",0,1);
+    ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.globalAlpha=.7; ctx.beginPath(); ctx.arc(0,0,o.r+4+Math.sin(performance.now()/120)*2,0,Math.PI*2); ctx.stroke(); ctx.globalAlpha=1;
+  } else {
+    ctx.shadowColor="rgba(0,0,0,.45)"; ctx.shadowBlur=10;
+    ctx.fillStyle=o.def.color; ctx.beginPath(); ctx.arc(0,0,o.r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    if(o.def.type==="watermelon"){ctx.strokeStyle=o.def.stripe; ctx.lineWidth=5; for(var i=-2;i<=2;i++){ctx.beginPath(); ctx.ellipse(i*o.r*0.32,0,o.r*0.16,o.r*0.92,0,0,Math.PI*2); ctx.stroke();}}
+    else {ctx.fillStyle="rgba(255,255,255,.28)"; ctx.beginPath(); ctx.arc(-o.r*0.3,-o.r*0.32,o.r*0.38,0,Math.PI*2); ctx.fill();}
+    // leaf / stem
+    ctx.fillStyle="#2e7d32"; ctx.beginPath(); ctx.ellipse(4,-o.r-2,10,5,-0.4,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#4a2f18"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(0,-o.r+2); ctx.lineTo(2,-o.r-7); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawHalf(h){
+  ctx.save(); ctx.translate(h.x,h.y); ctx.rotate(h.angle); ctx.globalAlpha=Math.max(0,1-h.t/h.life);
+  ctx.beginPath();
+  // half disc: side determines which half
+  if(h.side<0) ctx.arc(0,0,h.r,Math.PI*0.5,Math.PI*1.5); else ctx.arc(0,0,h.r,-Math.PI*0.5,Math.PI*0.5);
+  ctx.closePath();
+  ctx.fillStyle=h.isGold?"#ffd928":h.def.color; ctx.fill();
+  ctx.clip();
+  ctx.fillStyle=h.def.inner; ctx.beginPath(); ctx.arc(h.side*2,0,h.r*0.78,0,Math.PI*2); ctx.fill();
+  if(h.def.type==="watermelon"&&!h.isGold){ctx.fillStyle="#222"; for(var i=0;i<5;i++){ctx.beginPath(); ctx.arc((Math.random()-0.5)*h.r*0.7,(i-2)*h.r*0.22,2.2,0,Math.PI*2); ctx.fill();}}
+  ctx.restore(); ctx.globalAlpha=1;
+}
+function draw(){
+  ctx.save(); ctx.clearRect(0,0,W,H);
+  if(shake>0)ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake*0.7);
+  // bg pattern
+  ctx.strokeStyle="rgba(120,140,220,.07)"; ctx.lineWidth=1.5; var r=46;
+  for(var yy=H*0.66;yy<H+r;yy+=r*0.55){for(var xx=-r;xx<W+r;xx+=r){ctx.beginPath();ctx.arc(xx+((Math.round(yy/(r*0.55))%2)?r/2:0),yy,r,Math.PI,0);ctx.stroke();}}
+  var moonX=W*0.82,moonY=H*0.19; var mg=ctx.createRadialGradient(moonX,moonY,4,moonX,moonY,90); mg.addColorStop(0,"rgba(255,236,170,.5)"); mg.addColorStop(0.35,"rgba(255,236,170,.14)"); mg.addColorStop(1,"rgba(255,236,170,0)"); ctx.fillStyle=mg; ctx.fillRect(moonX-90,moonY-90,180,180); ctx.fillStyle="#f7e7b3"; ctx.beginPath(); ctx.arc(moonX,moonY,24,0,Math.PI*2); ctx.fill();
+  // splats (juice stains = exhilaration residue)
+  for(var i=0;i<splats.length;i++){var sp=splats[i]; var a=Math.max(0,0.22*(1-sp.t/sp.life)); ctx.globalAlpha=a; ctx.fillStyle=sp.color; ctx.beginPath(); ctx.ellipse(sp.x,sp.y,sp.r,sp.r*0.62,0.6,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(sp.x+sp.r*0.7,sp.y+8,sp.r*0.28,0,Math.PI*2); ctx.fill();}
+  ctx.globalAlpha=1;
+  // halves under fruits
+  for(var hi=0;hi<halves.length;hi++)drawHalf(halves[hi]);
+  for(var oi=0;oi<objects.length;oi++)drawFruit(objects[oi]);
+  // slash trail
+  if(trailPts.length>1){
+    var sw=SWORDS[save.sword];
+    for(var ti=1;ti<trailPts.length;ti++){var a=1-trailPts[ti].t/0.22; var wdt=sw.width*a;
+      ctx.strokeStyle="rgba(255,255,255,"+(a*0.95)+")"; ctx.lineWidth=Math.max(1,wdt*0.45); ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(trailPts[ti-1].x,trailPts[ti-1].y); ctx.lineTo(trailPts[ti].x,trailPts[ti].y); ctx.stroke();
+      ctx.strokeStyle=sw.trail+(a*0.55)+")"; ctx.lineWidth=wdt; ctx.beginPath(); ctx.moveTo(trailPts[ti-1].x,trailPts[ti-1].y); ctx.lineTo(trailPts[ti].x,trailPts[ti].y); ctx.stroke();
+    }
+    ctx.shadowColor=sw.glow; ctx.shadowBlur=16; ctx.strokeStyle="rgba(255,255,255,.9)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(trailPts[0].x,trailPts[0].y); for(var tj=1;tj<trailPts.length;tj++)ctx.lineTo(trailPts[tj].x,trailPts[tj].y); ctx.stroke(); ctx.shadowBlur=0;
+  }
+  // particles
+  for(var pi=0;pi<particles.length;pi++){var pp=particles[pi]; var pa=1-pp.t/pp.life; ctx.globalAlpha=pa; ctx.fillStyle=pp.color; ctx.beginPath(); ctx.arc(pp.x,pp.y,pp.size*pa+0.5,0,Math.PI*2); ctx.fill();}
+  ctx.globalAlpha=1;
+  // floats
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(var fi=0;fi<floats.length;fi++){var f=floats[fi]; var fa2=1-f.t/f.life; ctx.globalAlpha=Math.min(1,fa2*1.7); ctx.save(); ctx.translate(f.x,f.y); ctx.scale(f.scale,f.scale); ctx.font="900 "+f.size+"px 'Hiragino Kaku Gothic ProN',sans-serif"; ctx.fillStyle=f.color; ctx.shadowColor="rgba(0,0,0,.65)"; ctx.shadowBlur=7; ctx.fillText(f.text,0,0); ctx.restore();}
+  ctx.globalAlpha=1; ctx.restore();
+  if(flashA>0){ctx.fillStyle="rgba("+flashColor+","+(flashA*0.5)+")"; ctx.fillRect(0,0,W,H)}
+  if(feverActive>0){ctx.strokeStyle="rgba(255,150,0,"+(0.25+Math.sin(performance.now()/90)*0.12)+")"; ctx.lineWidth=6; ctx.strokeRect(3,3,W-6,H-6)}
+}
 
-    /* ---------------- ミッション ---------------- */
-    var MISSIONS = [
-      { id: "gold10",   text: "金ゾーンを合計10回斬る",   prog: function(){ return [save.stats.gold, 10]; } },
-      { id: "combo15",  text: "コンボ15を達成する",       prog: function(){ return [save.stats.maxCombo, 15]; } },
-      { id: "level5",   text: "レベル5に到達する",        prog: function(){ return [save.stats.maxLevel, 5]; } },
-      { id: "score2000",text: "1ゲームで2000点取る",      prog: function(){ return [save.best, 2000]; } },
-      { id: "gold30",   text: "金ゾーンを合計30回斬る",   prog: function(){ return [save.stats.gold, 30]; } },
-      { id: "combo25",  text: "コンボ25を達成する",       prog: function(){ return [save.stats.maxCombo, 25]; } },
-      { id: "level10",  text: "レベル10に到達する",       prog: function(){ return [save.stats.maxLevel, 10]; } },
-      { id: "score4000",text: "1ゲームで4000点取る",      prog: function(){ return [save.best, 4000]; } },
-      { id: "legend",   text: "伝説の刀を解放する",       prog: function(){ return [save.unlocked >= 5 ? 1 : 0, 1]; } }
-    ];
-    function checkMissions(announce){
-      var newly = [];
-      for (var i = 0; i < MISSIONS.length; i++) {
-        var m = MISSIONS[i];
-        if (save.missions[m.id]) continue;
-        var pr = m.prog();
-        if (pr[0] >= pr[1]) { save.missions[m.id] = true; newly.push(m); }
-      }
-      if (newly.length) {
-        persist();
-        if (announce) showToast("ミッション達成！「" + newly[0].text + "」");
-      }
-      return newly.length > 0;
-    }
+/* Input: swipe to slash */
+var app=$("app");
+function getPos(e){return{x:e.clientX,y:e.clientY}}
+app.addEventListener("pointerdown",function(e){
+  if(e.target.closest("button,a,details,.overlay"))return;
+  if(state!=="playing")return;
+  audioInit(); pointerDown=true; swipeSliced=0; lastPointer=getPos(e); trailPts=[{x:lastPointer.x,y:lastPointer.y,t:0}];
+  // tap slice
+  trySliceSegment(lastPointer.x,lastPointer.y,lastPointer.x+1,lastPointer.y+1,0);
+});
+app.addEventListener("pointermove",function(e){
+  if(!pointerDown||state!=="playing")return;
+  var p=getPos(e); if(!lastPointer){lastPointer=p;return}
+  var dist=Math.hypot(p.x-lastPointer.x,p.y-lastPointer.y);
+  if(dist<4)return;
+  var now=performance.now(); var speed=dist*60;
+  trailPts.push({x:p.x,y:p.y,t:0}); if(trailPts.length>22)trailPts.shift();
+  if(now-lastWhoosh>70 && dist>14){sfxWhoosh(speed); lastWhoosh=now;}
+  trySliceSegment(lastPointer.x,lastPointer.y,p.x,p.y,speed);
+  lastPointer=p;
+});
+function pointerEnd(){ if(pointerDown&&state==="playing") endSwipe(); pointerDown=false; lastPointer=null; }
+app.addEventListener("pointerup",pointerEnd); app.addEventListener("pointercancel",pointerEnd); app.addEventListener("pointerleave",pointerEnd);
 
-    /* ---------------- オーディオ ---------------- */
-    var AC = null, masterGain = null, bgmGain = null, noiseBuf = null;
-    var muted = save.muted;
-    function audioInit(){
-      if (AC) { if (AC.state === "suspended") AC.resume(); return; }
-      try {
-        AC = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = AC.createGain(); masterGain.gain.value = muted ? 0 : 1;
-        masterGain.connect(AC.destination);
-        bgmGain = AC.createGain(); bgmGain.gain.value = 0.16; bgmGain.connect(masterGain);
-        var len = AC.sampleRate * 1;
-        noiseBuf = AC.createBuffer(1, len, AC.sampleRate);
-        var d = noiseBuf.getChannelData(0);
-        for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-        bgmStart();
-      } catch (e) { AC = null; }
-    }
-    function tone(freq, dur, type, vol, when, slideTo, dest){
-      if (!AC) return;
-      var t = AC.currentTime + (when || 0);
-      var o = AC.createOscillator(), g = AC.createGain();
-      o.type = type || "sine"; o.frequency.setValueAtTime(freq, t);
-      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(vol, t + 0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      o.connect(g); g.connect(dest || masterGain);
-      o.start(t); o.stop(t + dur + 0.05);
-    }
-    function noise(dur, vol, freq, q, when, type){
-      if (!AC) return;
-      var t = AC.currentTime + (when || 0);
-      var src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-      var f = AC.createBiquadFilter(); f.type = type || "bandpass"; f.frequency.value = freq; f.Q.value = q || 1;
-      var g = AC.createGain();
-      g.gain.setValueAtTime(vol, t);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-      src.connect(f); f.connect(g); g.connect(masterGain);
-      src.start(t); src.stop(t + dur + 0.05);
-    }
-    function sfxSlash(){ noise(0.16, 0.5, 2600, 0.7); tone(880, 0.12, "sawtooth", 0.06, 0, 220); }
-    function sfxHit(){ tone(520, 0.14, "triangle", 0.32); tone(780, 0.18, "sine", 0.22, 0.02); }
-    function sfxGold(){
-      tone(1318, 0.16, "sine", 0.3); tone(1760, 0.2, "sine", 0.28, 0.05);
-      tone(2217, 0.3, "sine", 0.24, 0.1); tone(2637, 0.36, "sine", 0.16, 0.15);
-      noise(0.2, 0.12, 6000, 2);
-    }
-    function sfxBlue(){ tone(392, 0.12, "triangle", 0.22); }
-    function sfxMiss(){ tone(160, 0.28, "sawtooth", 0.26, 0, 70); noise(0.2, 0.2, 300, 1); }
-    function sfxLevel(){ tone(659, 0.12, "triangle", 0.26); tone(880, 0.14, "triangle", 0.26, 0.09); tone(1318, 0.24, "triangle", 0.26, 0.18); }
-    function sfxDanger(){ tone(220, 0.16, "square", 0.14); tone(220, 0.16, "square", 0.14, 0.2); tone(330, 0.3, "square", 0.16, 0.4); }
-    function sfxUnlock(){ [523,659,784,1046,1318].forEach(function(f,i){ tone(f, 0.22, "triangle", 0.24, i*0.07); }); }
-    function sfxOver(){ tone(392, 0.3, "sawtooth", 0.2, 0, 380); tone(311, 0.34, "sawtooth", 0.2, 0.22, 300); tone(233, 0.6, "sawtooth", 0.22, 0.46, 110); noise(0.5, 0.25, 500, 0.8, 0.4); }
-
-    /* BGM: 軽快な和風ペンタトニック・ループ */
-    var bgmTimer = null, bgmStep = 0, bgmNext = 0;
-    var BGM_NOTES = [293.66, 311.13, 392.0, 440.0, 466.16, 587.33, 622.25, 783.99];
-    var BGM_MELODY = [4, -1, 2, 3, 4, -1, 5, 4, 3, 2, 3, -1, 1, 2, 0, -1,
-                      4, -1, 2, 3, 5, 4, 3, 2, 3, -1, 2, 1, 0, 1, 2, -1];
-    function bgmStart(){
-      if (!AC || bgmTimer) return;
-      bgmNext = AC.currentTime + 0.1; bgmStep = 0;
-      bgmTimer = setInterval(function(){
-        if (!AC) return;
-        var spb = 60 / 132 / 2; /* 132BPM, 8分音符 */
-        while (bgmNext < AC.currentTime + 0.18) {
-          var s = bgmStep % 32, dt = bgmNext - AC.currentTime;
-          var n = BGM_MELODY[s];
-          if (n >= 0) tone(BGM_NOTES[n], 0.22, "triangle", 0.5, Math.max(0, dt), null, bgmGain);
-          if (s % 8 === 0) tone(73.42, 0.5, "sine", 0.85, Math.max(0, dt), null, bgmGain);
-          if (s % 8 === 4) tone(110.0, 0.4, "sine", 0.6, Math.max(0, dt), null, bgmGain);
-          bgmNext += spb; bgmStep++;
-        }
-      }, 60);
-    }
-    function setMuted(m){
-      muted = m; save.muted = m; persist();
-      if (masterGain) masterGain.gain.value = m ? 0 : 1;
-      $("btn-mute").textContent = m ? "🔇" : "🔊";
-    }
-
-    /* ---------------- ゲーム状態 ---------------- */
-    var GOLD_HALF = 0.032, RED_HALF = 0.115, BLUE_HALF = 0.235;
-    var state = "menu"; /* menu | playing | paused | over */
-    var pos = 0.5, dir = 1, speedMul = 1;
-    var score = 0, combo = 0, lives = 3, hits = 0, level = 1;
-    var goldStreak = 0, maxComboRun = 0, goldRun = 0;
-    var pauseT = 0, freezeT = 0, shake = 0, flashA = 0, flashColor = "255,255,255";
-    var dangerT = 0, burstT = 0, overT = -1, startedAt = 0;
-    var trail = [], particles = [], slashes = [], floats = [];
-    var totalAtStart = 0;
-
-    function comboMult(c){
-      if (c >= 20) return 3;
-      if (c >= 10) return 2;
-      if (c >= 5) return 1.5;
-      return 1;
-    }
-    function isDanger(lv){ return lv % 5 === 0; }
-    function baseSpeed(lv){
-      var s;
-      if (lv <= 1) s = 0.30;
-      else if (lv === 2) s = 0.38;
-      else s = 0.38 + (lv - 2) * 0.055;
-      if (isDanger(lv)) s *= 1.32;
-      else if (lv % 5 === 1 && lv > 1) s -= 0.07; /* 難所の次は平地 */
-      return Math.min(s, 1.7);
-    }
-    function effectiveTotal(){ return totalAtStart + score; }
-    function nextSwordInfo(){
-      for (var i = 0; i < SWORDS.length; i++) {
-        if (SWORDS[i].req > effectiveTotal()) return SWORDS[i];
-      }
-      return null;
-    }
-
-    /* ---------------- 演出ヘルパー ---------------- */
-    var toastTimer = null;
-    function showToast(msg){
-      var t = $("toast"); t.textContent = msg; t.classList.add("show");
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2400);
-    }
-    function showBanner(big, sub, danger){
-      var b = $("banner");
-      b.querySelector(".big").textContent = big;
-      b.querySelector(".sub").textContent = sub || "";
-      b.classList.toggle("danger", !!danger);
-      b.classList.remove("show"); void b.offsetWidth; b.classList.add("show");
-    }
-    function barGeom(){
-      var bw = Math.min(W * 0.92, 920);
-      return { x: (W - bw) / 2, w: bw, y: H * 0.56, h: Math.max(46, Math.min(64, H * 0.085)) };
-    }
-    function spawnSparks(x, y, color, n, power){
-      for (var i = 0; i < n; i++) {
-        var a = Math.random() * Math.PI * 2, sp = (0.3 + Math.random() * 0.7) * (power || 260);
-        particles.push({
-          x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
-          life: 0.35 + Math.random() * 0.4, t: 0, color: color,
-          size: 1.5 + Math.random() * 2.5
-        });
-      }
-    }
-    function spawnFloat(x, y, text, color, size){
-      floats.push({ x: x, y: y, text: text, color: color, size: size || 26, t: 0, life: 0.95 });
-    }
-
-    /* ---------------- HUD ---------------- */
-    function renderLives(){
-      var s = "";
-      for (var i = 0; i < 3; i++) s += '<span class="heart' + (i < lives ? "" : " off") + '">♥</span>';
-      $("hud-lives").innerHTML = s;
-    }
-    function updateHUD(){
-      $("hud-score").textContent = score.toLocaleString();
-      $("hud-best").textContent = "ベスト " + Math.max(save.best, score).toLocaleString();
-      $("hud-level").textContent = "レベル " + level + (isDanger(level) ? "（難所）" : "");
-      var nx = nextSwordInfo();
-      if (nx) $("hud-next").innerHTML = "次の刀「" + nx.name + "」まで あと <b>" + (nx.req - effectiveTotal()).toLocaleString() + "点</b>";
-      else $("hud-next").textContent = "全ての刀を解放済み";
-      renderLives();
-      var c = $("hud-combo");
-      if (combo >= 2) {
-        c.classList.add("on");
-        c.querySelector(".num").textContent = combo;
-        var m = comboMult(combo);
-        c.querySelector(".mult").textContent = m > 1 ? "得点 ×" + m : "";
-      } else c.classList.remove("on");
-    }
-    function popCombo(){
-      var c = $("hud-combo");
-      c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop");
-    }
-
-    /* ---------------- メニュー描画 ---------------- */
-    function renderMenu(){
-      $("start-best").innerHTML = save.best > 0
-        ? "ベストスコア <b>" + save.best.toLocaleString() + "</b> 点 ／ 累計 " + save.total.toLocaleString() + " 点"
-        : "まずは気軽に一太刀。金ゾーンを狙おう。";
-      var row = $("sword-row"); row.innerHTML = "";
-      SWORDS.forEach(function(sw, i){
-        var unlocked = i < save.unlocked;
-        var b = document.createElement("button");
-        b.className = "sword-chip" + (unlocked ? "" : " locked") + (save.sword === i && unlocked ? " sel" : "");
-        b.innerHTML = '<span class="sw" style="background:linear-gradient(90deg,' + sw.color + ',#fff8,' + sw.color + ')"></span>' +
-          '<span class="nm">' + sw.name + "</span>" +
-          '<span class="req">' + (unlocked ? (save.sword === i ? "装備中" : "タップで装備") : "累計" + sw.req.toLocaleString() + "点で解放") + "</span>";
-        if (unlocked) b.addEventListener("click", function(){
-          save.sword = i; persist(); renderMenu();
-          showToast("「" + sw.name + "」を装備した");
-        });
-        row.appendChild(b);
-      });
-      var done = 0;
-      var ul = $("missions-list"); ul.innerHTML = "";
-      MISSIONS.forEach(function(m){
-        var isDone = !!save.missions[m.id];
-        if (isDone) done++;
-        var pr = m.prog();
-        var li = document.createElement("li");
-        if (isDone) li.className = "done";
-        li.innerHTML = m.text + (isDone ? "" : '<span class="prog">' + Math.min(pr[0], pr[1]).toLocaleString() + " / " + pr[1].toLocaleString() + "</span>");
-        ul.appendChild(li);
-      });
-      $("missions-cnt").textContent = done + " / " + MISSIONS.length + " 達成";
-    }
-
-    /* ---------------- ゲーム進行 ---------------- */
-    function startGame(){
-      audioInit();
-      try { if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){}); } catch (e) {}
-      score = 0; combo = 0; lives = 3; hits = 0; level = 1;
-      goldStreak = 0; maxComboRun = 0; goldRun = 0;
-      pos = 0.08; dir = 1; speedMul = 1;
-      pauseT = 0; freezeT = 0; shake = 0; flashA = 0; overT = -1;
-      dangerT = 1.4; burstT = 0;
-      trail = []; particles = []; slashes = []; floats = [];
-      totalAtStart = save.total;
-      state = "playing"; startedAt = performance.now();
-      $("ov-start").classList.remove("on");
-      $("ov-over").classList.remove("on");
-      $("ov-pause").classList.remove("on");
-      $("hud").classList.add("on");
-      $("tap-hint").classList.add("on");
-      updateHUD();
-    }
-    function endGame(){
-      state = "over";
-      save.total += score;
-      var newBest = score > save.best;
-      if (newBest) save.best = score;
-      if (maxComboRun > save.stats.maxCombo) save.stats.maxCombo = maxComboRun;
-      if (level > save.stats.maxLevel) save.stats.maxLevel = level;
-      persist();
-      checkMissions(false);
-      var rank = score >= 4000 ? "S" : score >= 2500 ? "A" : score >= 1200 ? "B" : score >= 500 ? "C" : "D";
-      $("over-rank").textContent = rank;
-      $("over-score").textContent = score.toLocaleString() + " 点";
-      $("over-newbest").textContent = newBest && score > 0 ? "★ ベスト更新！ ★" : "";
-      $("st-combo").textContent = maxComboRun;
-      $("st-gold").textContent = goldRun;
-      $("st-level").textContent = level;
-      $("st-best").textContent = save.best.toLocaleString();
-      $("hud").classList.remove("on");
-      $("tap-hint").classList.remove("on");
-      $("ov-over").classList.add("on");
-      renderMenu();
-    }
-    function toMenu(){
-      state = "menu";
-      $("ov-over").classList.remove("on");
-      $("ov-pause").classList.remove("on");
-      $("hud").classList.remove("on");
-      $("tap-hint").classList.remove("on");
-      $("ov-start").classList.add("on");
-      renderMenu();
-    }
-    function setPause(on){
-      if (on && state === "playing") {
-        state = "paused"; $("ov-pause").classList.add("on");
-      } else if (!on && state === "paused") {
-        state = "playing"; $("ov-pause").classList.remove("on");
-      }
-    }
-
-    function checkUnlocks(){
-      var eff = effectiveTotal();
-      var target = 0;
-      for (var i = 0; i < SWORDS.length; i++) if (eff >= SWORDS[i].req) target = i + 1;
-      if (target > save.unlocked) {
-        save.unlocked = target; persist();
-        var sw = SWORDS[target - 1];
-        showBanner("刀 解放", "「" + sw.name + "」を手に入れた！");
-        sfxUnlock();
-        checkMissions(true);
-      }
-    }
-
-    function levelUp(){
-      level++;
-      if (level > save.stats.maxLevel) { save.stats.maxLevel = level; persist(); }
-      checkMissions(true);
-      if (isDanger(level)) {
-        showBanner("難 所", "レベル " + level + " ― 刃の動きが読めない…！");
-        sfxDanger(); dangerT = 1.2 + Math.random();
-      } else {
-        showBanner("レベル " + level, level % 5 === 1 && level > 1 ? "平地 ― 少し落ち着いて狙える" : "刃が速くなる…！");
-        sfxLevel();
-      }
-    }
-
-    /* ---------------- 斬撃判定 ---------------- */
-    function slash(){
-      if (state !== "playing" || pauseT > 0.05) return;
-      audioInit();
-      var g = barGeom();
-      var mx = g.x + pos * g.w, my = g.y + g.h / 2;
-      var d = Math.abs(pos - 0.5);
-      var sw = SWORDS[save.sword];
-      sfxSlash();
-      slashes.push({ x: mx, y: my, t: 0, life: 0.28, color: sw.color, gold: d <= GOLD_HALF });
-
-      if (d <= GOLD_HALF) {
-        /* 金ゾーン */
-        combo++; goldStreak++; goldRun++;
-        save.stats.gold++; persist();
-        var mult = comboMult(combo);
-        var pts = Math.round(300 * mult);
-        var bonus = goldStreak >= 2 ? 40 * (goldStreak - 1) : 0;
-        score += pts + bonus;
-        freezeT = 0.085; pauseT = 0.34; shake = Math.max(shake, 13);
-        flashA = 0.5; flashColor = "255,214,90";
-        spawnSparks(mx, my, "#ffd968", 26, 340);
-        spawnSparks(mx, my, "#ffffff", 10, 240);
-        spawnFloat(mx, my - g.h, "金！ +" + (pts + bonus), "#ffd968", 30);
-        if (goldStreak >= 2) spawnFloat(mx, my - g.h - 38, goldStreak + "連続斬り！", "#ffb84d", 19);
-        sfxGold();
-        checkUnlocks(); checkMissions(true);
-      } else if (d <= RED_HALF) {
-        combo++; goldStreak = 0;
-        var pts2 = Math.round(100 * comboMult(combo));
-        score += pts2;
-        freezeT = 0.07; pauseT = 0.3; shake = Math.max(shake, 8);
-        spawnSparks(mx, my, "#ff7a5c", 16, 260);
-        spawnFloat(mx, my - g.h, "+" + pts2, "#ff8a70", 25);
-        sfxHit();
-        checkUnlocks();
-      } else if (d <= BLUE_HALF) {
-        combo++; goldStreak = 0;
-        var pts3 = Math.round(30 * comboMult(combo));
-        score += pts3;
-        freezeT = 0.05; pauseT = 0.26; shake = Math.max(shake, 4);
-        spawnSparks(mx, my, "#7fb2e8", 10, 200);
-        spawnFloat(mx, my - g.h, "+" + pts3, "#a9c8f5", 21);
-        sfxBlue();
-        checkUnlocks();
-      } else {
-        /* ミス */
-        combo = 0; goldStreak = 0; lives--;
-        pauseT = 0.5; shake = Math.max(shake, 16);
-        flashA = 0.4; flashColor = "224,60,40";
-        spawnSparks(mx, my, "#8a8fa8", 8, 160);
-        spawnFloat(mx, my - g.h, "ミス…", "#ff7a66", 24);
-        sfxMiss();
-        renderLives();
-        if (lives <= 0) {
-          overT = 0.75;
-          flashA = 0.75; shake = 24;
-          sfxOver();
-        }
-      }
-      if (d <= BLUE_HALF) {
-        hits++;
-        if (combo > maxComboRun) { maxComboRun = combo; }
-        if (maxComboRun > save.stats.maxCombo) { save.stats.maxCombo = maxComboRun; persist(); checkMissions(true); }
-        popCombo();
-        if (hits % 10 === 0) levelUp();
-        if (performance.now() - startedAt > 2500) $("tap-hint").classList.remove("on");
-      }
-      updateHUD();
-    }
-
-    /* ---------------- 更新 ---------------- */
-    var lastT = performance.now();
-    function update(now){
-      var dt = Math.min(0.05, (now - lastT) / 1000);
-      lastT = now;
-
-      if (state === "playing") {
-        if (freezeT > 0) freezeT -= dt;
-        else if (pauseT > 0) pauseT -= dt;
-        else {
-          var sp = baseSpeed(level) * speedMul;
-          if (burstT > 0) { burstT -= dt; sp *= 1.7; }
-          pos += dir * sp * dt;
-          if (pos >= 1) { pos = 1; dir = -1; }
-          if (pos <= 0) { pos = 0; dir = 1; }
-          /* 難所イベント：反転／急加速 */
-          if (isDanger(level)) {
-            dangerT -= dt;
-            if (dangerT <= 0) {
-              if (Math.random() < 0.55) { dir *= -1; spawnFloat(barGeom().x + pos * barGeom().w, barGeom().y - 30, "反転！", "#ff8a70", 18); }
-              else burstT = 0.7;
-              dangerT = 1.0 + Math.random() * 1.4;
-            }
-          }
-        }
-        if (overT > 0) {
-          overT -= dt;
-          if (overT <= 0) { overT = -1; endGame(); }
-        }
-      }
-
-      /* エフェクトはヒットストップ中も動かす */
-      var g = barGeom();
-      var mx = g.x + pos * g.w, my = g.y + g.h / 2;
-      trail.push({ x: mx, y: my });
-      if (trail.length > 16) trail.shift();
-      for (var i = particles.length - 1; i >= 0; i--) {
-        var p = particles[i]; p.t += dt;
-        if (p.t >= p.life) { particles.splice(i, 1); continue; }
-        p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
-      }
-      for (var j = slashes.length - 1; j >= 0; j--) {
-        slashes[j].t += dt;
-        if (slashes[j].t >= slashes[j].life) slashes.splice(j, 1);
-      }
-      for (var k = floats.length - 1; k >= 0; k--) {
-        floats[k].t += dt; floats[k].y -= 44 * dt;
-        if (floats[k].t >= floats[k].life) floats.splice(k, 1);
-      }
-      if (shake > 0) shake = Math.max(0, shake - dt * 46);
-      if (flashA > 0) flashA = Math.max(0, flashA - dt * 1.6);
-
-      draw(g, mx, my);
-      requestAnimationFrame(update);
-    }
-
-    /* ---------------- 描画 ---------------- */
-    function draw(g, mx, my){
-      ctx.save();
-      ctx.clearRect(0, 0, W, H);
-      if (shake > 0) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake * 0.7);
-
-      /* 背景の文様（青海波ふうの弧） */
-      ctx.strokeStyle = "rgba(120,140,220,.07)";
-      ctx.lineWidth = 1.5;
-      var r = 46;
-      for (var yy = H * 0.66; yy < H + r; yy += r * 0.55) {
-        for (var xx = -r; xx < W + r; xx += r) {
-          ctx.beginPath();
-          ctx.arc(xx + ((Math.round(yy / (r * 0.55)) % 2) ? r / 2 : 0), yy, r, Math.PI, 0);
-          ctx.stroke();
-        }
-      }
-      /* 月 */
-      var moonX = W * 0.82, moonY = H * 0.2;
-      var mg = ctx.createRadialGradient(moonX, moonY, 4, moonX, moonY, 90);
-      mg.addColorStop(0, "rgba(255,236,170,.5)");
-      mg.addColorStop(0.35, "rgba(255,236,170,.14)");
-      mg.addColorStop(1, "rgba(255,236,170,0)");
-      ctx.fillStyle = mg;
-      ctx.fillRect(moonX - 90, moonY - 90, 180, 180);
-      ctx.fillStyle = "#f7e7b3";
-      ctx.beginPath(); ctx.arc(moonX, moonY, 24, 0, Math.PI * 2); ctx.fill();
-
-      if (state !== "menu") {
-        drawBar(g);
-        drawTrail();
-        drawMarker(g, mx, my);
-      }
-      /* 斬撃エフェクト */
-      for (var i = 0; i < slashes.length; i++) {
-        var s = slashes[i], pr = s.t / s.life;
-        ctx.save();
-        ctx.globalAlpha = (1 - pr) * 0.95;
-        ctx.translate(s.x, s.y);
-        ctx.rotate(-0.5);
-        var len = (s.gold ? 190 : 140) * (0.5 + pr * 0.9);
-        var grad = ctx.createLinearGradient(-len, 0, len, 0);
-        grad.addColorStop(0, "rgba(255,255,255,0)");
-        grad.addColorStop(0.5, "#ffffff");
-        grad.addColorStop(1, "rgba(255,255,255,0)");
-        ctx.fillStyle = grad;
-        ctx.fillRect(-len, -2.2, len * 2, 4.4);
-        ctx.fillStyle = s.color;
-        ctx.globalAlpha = (1 - pr) * 0.5;
-        ctx.fillRect(-len * 0.8, -5, len * 1.6, 10);
-        ctx.restore();
-      }
-      /* 火花 */
-      for (var j = 0; j < particles.length; j++) {
-        var p = particles[j], a = 1 - p.t / p.life;
-        ctx.globalAlpha = a;
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a + 0.4, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      /* フローティングテキスト */
-      ctx.textAlign = "center";
-      for (var k = 0; k < floats.length; k++) {
-        var f = floats[k], fa = 1 - f.t / f.life;
-        ctx.globalAlpha = Math.min(1, fa * 1.6);
-        ctx.font = "800 " + f.size + "px 'Hiragino Kaku Gothic ProN',sans-serif";
-        ctx.fillStyle = f.color;
-        ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 6;
-        ctx.fillText(f.text, f.x, f.y);
-        ctx.shadowBlur = 0;
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-
-      /* フラッシュ */
-      if (flashA > 0) {
-        ctx.fillStyle = "rgba(" + flashColor + "," + (flashA * 0.55) + ")";
-        ctx.fillRect(0, 0, W, H);
-      }
-    }
-    function zoneRect(g, half){
-      return { x: g.x + (0.5 - half) * g.w, w: half * 2 * g.w };
-    }
-    function drawBar(g){
-      var danger = state === "playing" && isDanger(level);
-      /* 土台 */
-      ctx.fillStyle = "rgba(6,9,22,.85)";
-      roundRect(g.x - 6, g.y - 6, g.w + 12, g.h + 12, 14); ctx.fill();
-      ctx.strokeStyle = danger ? "rgba(224,71,47,.8)" : "rgba(233,188,69,.4)";
-      ctx.lineWidth = 1.5;
-      roundRect(g.x - 6, g.y - 6, g.w + 12, g.h + 12, 14); ctx.stroke();
-      /* 青 */
-      var b = zoneRect(g, BLUE_HALF);
-      ctx.fillStyle = "#2c4f96"; roundRect(b.x, g.y, b.w, g.h, 8); ctx.fill();
-      /* 赤 */
-      var rd = zoneRect(g, RED_HALF);
-      ctx.fillStyle = "#b3341f"; roundRect(rd.x, g.y, rd.w, g.h, 6); ctx.fill();
-      /* 金 */
-      var gd = zoneRect(g, GOLD_HALF);
-      var gg = ctx.createLinearGradient(0, g.y, 0, g.y + g.h);
-      gg.addColorStop(0, "#ffe98a"); gg.addColorStop(0.5, "#e9bc45"); gg.addColorStop(1, "#b8860b");
-      ctx.fillStyle = gg; roundRect(gd.x, g.y, gd.w, g.h, 4); ctx.fill();
-      /* ゾーンの点数ラベル */
-      ctx.textAlign = "center";
-      ctx.font = "700 12px 'Hiragino Kaku Gothic ProN',sans-serif";
-      ctx.fillStyle = "rgba(255,255,255,.85)";
-      ctx.fillText("30", g.x + (0.5 - (BLUE_HALF + RED_HALF) / 2) * g.w, g.y + g.h + 22);
-      ctx.fillText("30", g.x + (0.5 + (BLUE_HALF + RED_HALF) / 2) * g.w, g.y + g.h + 22);
-      ctx.fillStyle = "#ffb59d";
-      ctx.fillText("100", g.x + (0.5 - (RED_HALF + GOLD_HALF) / 2) * g.w, g.y + g.h + 22);
-      ctx.fillText("100", g.x + (0.5 + (RED_HALF + GOLD_HALF) / 2) * g.w, g.y + g.h + 22);
-      ctx.fillStyle = "#ffd968";
-      ctx.fillText("300", g.x + 0.5 * g.w, g.y + g.h + 22);
-      /* 中央ライン */
-      ctx.fillStyle = "rgba(255,255,255,.5)";
-      ctx.fillRect(g.x + 0.5 * g.w - 0.75, g.y - 10, 1.5, 8);
-    }
-    function drawTrail(){
-      var sw = SWORDS[save.sword];
-      for (var i = 1; i < trail.length; i++) {
-        var a = i / trail.length;
-        ctx.strokeStyle = sw.trail + (a * 0.4) + ")";
-        ctx.lineWidth = 2 + a * 5;
-        ctx.beginPath();
-        ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
-        ctx.lineTo(trail[i].x, trail[i].y);
-        ctx.stroke();
-      }
-    }
-    function drawMarker(g, mx, my){
-      var sw = SWORDS[save.sword];
-      var bh = g.h * 1.9;
-      ctx.save();
-      ctx.shadowColor = sw.glow; ctx.shadowBlur = 18;
-      var grad = ctx.createLinearGradient(0, my - bh / 2, 0, my + bh / 2);
-      grad.addColorStop(0, "#ffffff");
-      grad.addColorStop(0.45, sw.color);
-      grad.addColorStop(1, sw.color);
-      ctx.fillStyle = grad;
-      /* 刃（細長い菱形） */
-      ctx.beginPath();
-      ctx.moveTo(mx, my - bh / 2);
-      ctx.lineTo(mx + 4.5, my);
-      ctx.lineTo(mx, my + bh / 2);
-      ctx.lineTo(mx - 4.5, my);
-      ctx.closePath(); ctx.fill();
-      ctx.restore();
-      /* 鍔 */
-      ctx.fillStyle = "#2a2118";
-      ctx.fillRect(mx - 9, my + bh * 0.18, 18, 4);
-    }
-    function roundRect(x, y, w, h, r){
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, x + w, y + h, r);
-      ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r);
-      ctx.arcTo(x, y, x + w, y, r);
-      ctx.closePath();
-    }
-
-    /* ---------------- 入力 ---------------- */
-    var app = $("app");
-    app.addEventListener("pointerdown", function(e){
-      if (e.target.closest("button, a, details, .overlay")) return;
-      if (state === "playing") slash();
-      else if (state === "over" && !$("ov-over").classList.contains("on")) slash();
-    });
-    /* ゲームオーバー画面が出たあとのタップ再戦（少し遅延して誤爆防止） */
-    var overShownAt = 0;
-    var overObserver = new MutationObserver(function(){
-      if ($("ov-over").classList.contains("on")) overShownAt = performance.now();
-    });
-    overObserver.observe($("ov-over"), { attributes: true, attributeFilter: ["class"] });
-    $("ov-over").addEventListener("pointerdown", function(e){
-      if (e.target.closest("button")) return;
-      if (performance.now() - overShownAt > 600) startGame();
-    });
-
-    document.addEventListener("keydown", function(e){
-      if (e.code === "Space" || e.code === "Enter") {
-        e.preventDefault();
-        if (e.repeat) return;
-        if (state === "playing") slash();
-        else if (state === "menu") startGame();
-        else if (state === "over" && $("ov-over").classList.contains("on")) startGame();
-        else if (state === "paused") setPause(false);
-      } else if (e.code === "KeyP" || e.code === "Escape") {
-        if (state === "playing") setPause(true);
-        else if (state === "paused") setPause(false);
-      } else if (e.code === "KeyR") {
-        if (state === "over" || state === "paused" || state === "playing") startGame();
-      }
-    });
-    document.addEventListener("visibilitychange", function(){
-      if (document.hidden && state === "playing") setPause(true);
-    });
-
-    $("btn-start").addEventListener("click", startGame);
-    $("btn-retry").addEventListener("click", startGame);
-    $("btn-tomenu").addEventListener("click", toMenu);
-    $("btn-pause").addEventListener("click", function(){
-      if (state === "playing") setPause(true);
-      else if (state === "paused") setPause(false);
-    });
-    $("btn-resume").addEventListener("click", function(){ setPause(false); });
-    $("btn-restart2").addEventListener("click", startGame);
-    $("btn-quit2").addEventListener("click", toMenu);
-    $("btn-mute").addEventListener("click", function(){ audioInit(); setMuted(!muted); });
-    $("toplink").addEventListener("pointerdown", function(e){ e.stopPropagation(); });
-    $("btn-mute").textContent = muted ? "🔇" : "🔊";
-
-    checkMissions(false);
-    renderMenu();
-    requestAnimationFrame(update);
-    </script>
-  </body>
+var overShownAt=0; var overObserver=new MutationObserver(function(){if($("ov-over").classList.contains("on"))overShownAt=performance.now()}); overObserver.observe($("ov-over"),{attributes:true,attributeFilter:["class"]});
+$("ov-over").addEventListener("pointerdown",function(e){if(e.target.closest("button"))return; if(performance.now()-overShownAt>650)startGame()});
+document.addEventListener("keydown",function(e){
+  if(e.code==="Space"||e.code==="Enter"){e.preventDefault(); if(e.repeat)return; if(state==="menu")startGame(); else if(state==="over"&&$("ov-over").classList.contains("on"))startGame(); else if(state==="paused")setPause(false);}
+  else if(e.code==="KeyP"||e.code==="Escape"){if(state==="playing")setPause(true); else if(state==="paused")setPause(false);}
+  else if(e.code==="KeyR"){if(state==="over"||state==="paused"||state==="playing")startGame();}
+});
+document.addEventListener("visibilitychange",function(){if(document.hidden&&state==="playing")setPause(true)});
+$("btn-start").addEventListener("click",startGame); $("btn-retry").addEventListener("click",startGame); $("btn-tomenu").addEventListener("click",toMenu);
+$("btn-pause").addEventListener("click",function(){if(state==="playing")setPause(true); else if(state==="paused")setPause(false)});
+$("btn-resume").addEventListener("click",function(){setPause(false)}); $("btn-restart2").addEventListener("click",startGame); $("btn-quit2").addEventListener("click",toMenu);
+$("btn-mute").addEventListener("click",function(){audioInit(); setMuted(!muted)}); $("toplink").addEventListener("pointerdown",function(e){e.stopPropagation()});
+$("btn-mute").textContent=muted?"🔇":"🔊";
+checkMissions(false); renderMenu(); requestAnimationFrame(update);
+</script>
+</body>
 </html>
