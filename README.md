@@ -13,7 +13,7 @@
 
 各ゲームのBGMには、OpenGameArt.org で公開されているフリー音源（各ディレクトリの bgm.ogg）を使用しています。
 
-- スネークDX：「Happy Clappy Loop」by OwlishMedia — CC0 — https://opengameart.org/content/happy-clappy-loop
+- スネークDX：「Summer Park - 8bit tune (loop)」by Scribe (Daniel Stephens) — CC0 — https://opengameart.org/content/summer-park-8bit-tune-loop
 - スターシューター：「RailJet」by Deceased Superior Technician (DST) — CC-BY 3.0 — https://opengameart.org/content/railjet-long-seamless-loop / http://www.nosoapradio.us
 - バランスタワー：「Chill lofi inspired [loop edit]」by omfgdude, loop edit by qubodup — CC0 — https://opengameart.org/content/chill-lofi-inspired-loop-edit
 - タイミング斬り：「Taiko drums (seamless loop)」by jobro — CC-BY 3.0 — https://opengameart.org/content/taiko-drums-seamless-loop

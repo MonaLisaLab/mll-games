@@ -219,8 +219,11 @@ function renderMenu(){$("start-best").innerHTML=save.best>0?"ベストスコア 
 
 function spawnObject(){
   var roll=Math.random();
-  var isBomb=roll<Math.min(0.16,0.08+level*0.012);
-  var isGold=!isBomb && roll>0.94;
+  var bombRate=Math.min(0.16,0.08+level*0.012);
+  var goldRate=0.06;
+  if(feverActive>0){ bombRate*=0.4; goldRate=0.18; }
+  var isBomb=roll<bombRate;
+  var isGold=!isBomb && roll>1-goldRate;
   var base=isGold?{type:"gold",r:34,score:150,color:"#ffd928",inner:"#fff6a0",juice:"#ffd928",stripe:"#d4a017"}:FRUITS[Math.floor(Math.random()*FRUITS.length)];
   var x=W*(0.18+Math.random()*0.64);
   var vx=(W/2-x)*0.28+(Math.random()-0.5)*140;
