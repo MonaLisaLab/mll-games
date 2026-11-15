@@ -207,7 +207,7 @@ function nextSwordInfo(){for(var i=0;i<SWORDS.length;i++)if(SWORDS[i].req>effect
 var toastTimer=null;function showToast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.classList.remove("show")},2400)}
 function showBanner(big,sub,danger){var b=$("banner");b.querySelector(".big").textContent=big;b.querySelector(".sub").textContent=sub||"";b.classList.toggle("danger",!!danger);b.classList.remove("show");void b.offsetWidth;b.classList.add("show")}
 function spawnSparks(x,y,color,n,power){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,sp=(0.3+Math.random()*0.9)*(power||320);particles.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-80,life:0.4+Math.random()*0.5,t:0,color:color,size:2+Math.random()*4})}}
-function spawnJuice(x,y,color,n){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,sp=80+Math.random()*380;particles.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-120,life:0.5+Math.random()*0.6,t:0,color:color,size:3+Math.random()*5,juice:true})}}
+function spawnJuice(x,y,color,n){for(var i=0;i<n;i++){var a=Math.random()*Math.PI*2,sp=100+Math.random()*540;particles.push({x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-150,life:0.55+Math.random()*0.8,t:0,color:color,size:3+Math.random()*7,juice:true})}}
 function spawnFloat(x,y,text,color,size){floats.push({x:x,y:y,text:text,color:color,size:size||26,t:0,life:1,scale:0.6})}
 function addSplat(x,y,color,r){splats.push({x:x,y:y,color:color,r:r||38,t:0,life:3.2});if(splats.length>28)splats.shift()}
 
@@ -276,7 +276,7 @@ function sliceObject(obj,angle){
   // normal / gold
   slicedCount++; save.stats.totalSliced++; swipeSliced++;
   chainCombo++; chainTimer=1.15; if(chainCombo>maxComboRun)maxComboRun=chainCombo;
-  if(obj.isGold){goldRun++; save.stats.gold++; slowT=0.55; freezeT=0.09;}
+  if(obj.isGold){goldRun++; save.stats.gold++; slowT=1.1; freezeT=0.09;}
   else freezeT= obj.def.type==="watermelon"?0.07:0.045;
   shake=Math.max(shake, obj.isGold?14:8+Math.min(10,chainCombo));
   var mult=comboMult(chainCombo)*sw.bonus*(feverActive>0?2:1);
@@ -289,9 +289,11 @@ function sliceObject(obj,angle){
   for(var s=-1;s<=1;s+=2){
     halves.push({x:obj.x,y:obj.y,vx:obj.vx+Math.cos(perp)*s*160+(Math.random()-0.5)*60,vy:obj.vy*0.35+Math.sin(perp)*s*80-40,angle:obj.angle,va:obj.va+s*3.5,r:obj.r,def:obj.def,isGold:obj.isGold,side:s,sliceAngle:angle,t:0,life:1.1});
   }
-  spawnJuice(obj.x,obj.y,obj.def.juice, obj.isGold?30:20);
-  spawnSparks(obj.x,obj.y,obj.def.juice,10,260);
-  addSplat(obj.x,obj.y,obj.def.juice,obj.r*0.9);
+  spawnJuice(obj.x,obj.y,obj.def.juice, obj.isGold?62:42);
+  spawnJuice(obj.x,obj.y,obj.def.inner, obj.isGold?18:12);
+  spawnSparks(obj.x,obj.y,obj.def.juice,14,300);
+  addSplat(obj.x,obj.y,obj.def.juice,obj.r*1.25);
+  addSplat(obj.x+(Math.random()-0.5)*obj.r*1.6,obj.y+(Math.random()-0.5)*obj.r*1.2,obj.def.juice,obj.r*0.55);
   spawnFloat(obj.x,obj.y-obj.r-8,"+"+pts+(obj.isGold?" GOLD!":""), obj.isGold?"#ffd968":"#ffffff", obj.isGold?32:24);
   if(chainCombo>=3) spawnFloat(obj.x,obj.y+28,chainCombo+"連続斬り！","#ffd968",19);
   sfxSlice(chainCombo); if(obj.isGold)sfxGold();
