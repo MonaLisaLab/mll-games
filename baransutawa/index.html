@@ -457,6 +457,52 @@
       for (var i = 0; i < n.length; i++) tone(n[i], n[i], 0.22, 'triangle', 0.3, i * 0.09);
     }
     function sndClick() { tone(700, 700, 0.06, 'triangle', 0.15); }
+
+    /* ---------- BGM（Web Audio生成ループ） ----------
+       落ち着いたコード進行（C-Am-F-G）のゆるやかなループ。
+       プレイ中のみ再生し、ミュート／メニュー／ゲームオーバーで止まる。 */
+    var bgmTimer = null, bgmStep = 0, bgmNext = 0, bgmGain = null;
+    function bgmFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+    var BGM_CHORDS = [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]];
+    var BGM_BASS = [36, 33, 29, 31];
+    var BGM_MEL = [72, 0, 76, 0, 69, 0, 72, 0, 77, 0, 72, 0, 74, 0, 71, 0];
+    function bgmNote(midi, t, dur, type, vol) {
+      if (!AC || !bgmGain) return;
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = type; o.frequency.setValueAtTime(bgmFreq(midi), t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(bgmGain); o.start(t); o.stop(t + dur + 0.05);
+    }
+    function bgmScheduleStep(step, t) {
+      var bar = Math.floor(step / 4) % 4;
+      if (step % 4 === 0) {
+        var ch = BGM_CHORDS[bar];
+        for (var i = 0; i < ch.length; i++) bgmNote(ch[i], t, 1.65, 'triangle', 0.026);
+        bgmNote(BGM_BASS[bar], t, 1.3, 'sine', 0.055);
+      }
+      var mel = BGM_MEL[step % BGM_MEL.length];
+      if (mel) bgmNote(mel, t, 0.5, 'sine', 0.038);
+    }
+    function bgmTick() {
+      if (!AC) return;
+      if (muted || mode === 'menu' || mode === 'over') { bgmNext = AC.currentTime + 0.06; return; }
+      if (bgmNext < AC.currentTime - 0.05) bgmNext = AC.currentTime + 0.05;
+      while (bgmNext < AC.currentTime + 0.3) {
+        bgmScheduleStep(bgmStep, bgmNext);
+        bgmNext += 0.42;
+        bgmStep = (bgmStep + 1) % 16;
+      }
+    }
+    function bgmStart() {
+      if (bgmTimer) return;
+      var ac = audio(); if (!ac) return;
+      if (!bgmGain) { bgmGain = ac.createGain(); bgmGain.gain.value = 0.9; bgmGain.connect(ac.destination); }
+      bgmStep = 0; bgmNext = ac.currentTime + 0.08;
+      bgmTimer = setInterval(bgmTick, 90);
+    }
+    function bgmStop() { if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; } }
     </script>
     <script>
     'use strict';
@@ -555,6 +601,7 @@
 
     function startGame() {
       audio();
+      bgmStart();
       sndClick();
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
       var el = document.documentElement;
@@ -566,6 +613,7 @@
     }
 
     function toMenu() {
+      bgmStop();
       sndClick();
       mode = 'menu';
       overEl.classList.add('hidden');
@@ -705,6 +753,7 @@
     }
 
     function gameOver() {
+      bgmStop();
       mode = 'over';
       var isBest = score > best;
       if (isBest) { best = score; store.set('best', best); }
@@ -1220,7 +1269,7 @@
     $('muteBtn').addEventListener('click', function () {
       muted = !muted;
       this.classList.toggle('muted', muted);
-      if (!muted) sndClick();
+      if (!muted) { sndClick(); if (mode !== 'menu' && mode !== 'over') bgmStart(); } else bgmStop();
     });
     window.addEventListener('resize', resize);
     document.addEventListener('touchmove', function (e) { e.preventDefault(); }, { passive: false });

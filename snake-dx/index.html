@@ -382,7 +382,7 @@
       var SPEEDS={slow:165,normal:118,fast:82,insane:62};
       var MODES={
         classic:"壁はすり抜けて反対側から出てくる。自分の体と岩に当たったら終わり。迷ったらこれ。",
-        chaos:"壁はすり抜けて反対側から出てくる。レベルが上がるたび岩の障害物が出現。金のりんごも出やすい高得点モード。"
+        chaos:"壁はすり抜けて反対側から出てくる。レベルが上がるたび岩の障害物が出現する高難度モード。"
       };
       var SKINS={
         green:{head:"#8bf09d",body:"#2fb84d",dark:"#157a31",belly:"#bff0c9"},
@@ -544,15 +544,15 @@
         {id:"score1000", text:"スコア1000点", goal:function(){return Math.min(score,1000);}, target:1000, unit:"点"},
         {id:"apples15", text:"1プレイでりんご15個", goal:function(){return Math.min(apples||0,15);}, target:15, unit:"個"},
         {id:"apples25", text:"1プレイでりんご25個", goal:function(){return Math.min(apples||0,25);}, target:25, unit:"個"},
-        {id:"gold2", text:"金のりんごを2個", goal:function(){return Math.min(goldEaten,2);}, target:2, unit:"個"},
-        {id:"gold5", text:"金のりんごを5個", goal:function(){return Math.min(goldEaten,5);}, target:5, unit:"個"},
+        {id:"thunder2", text:"サンダーを2回使う", goal:function(){return Math.min(thunderGot,2);}, target:2, unit:"回"},
+        {id:"laser2", text:"レーザーを2回使う", goal:function(){return Math.min(laserGot,2);}, target:2, unit:"回"},
         {id:"combo5", text:"5コンボ達成", goal:function(){return Math.min(maxCombo,5);}, target:5, unit:""},
         {id:"combo8", text:"8コンボ達成", goal:function(){return Math.min(maxCombo,8);}, target:8, unit:""},
         {id:"lv3", text:"レベル3に到達", goal:function(){return Math.min(level,3);}, target:3, unit:""},
         {id:"lv5", text:"レベル5に到達", goal:function(){return Math.min(level,5);}, target:5, unit:""},
         {id:"time60", text:"60秒生き残る", goal:function(){return Math.min(Math.floor(elapsedSec()),60);}, target:60, unit:"秒"},
         {id:"time120", text:"120秒生き残る", goal:function(){return Math.min(Math.floor(elapsedSec()),120);}, target:120, unit:"秒"},
-        {id:"items", text:"スター・シールド・スローを各1回", goal:function(){return (starEaten>0&&shieldGot>0&&slowGot>0)?1:0;}, target:1, unit:""},
+        {id:"items", text:"シールド・スローを各1回", goal:function(){return (shieldGot>0&&slowGot>0)?1:0;}, target:1, unit:""},
         {id:"fever2", text:"フィーバーを2回発動（累計）", goal:function(){return Math.min(feverCount,2);}, target:2, unit:"回"},
         {id:"stage3", text:"ステージ3をクリア", goal:function(){return clearedStages[2]?1:0;}, target:1, unit:""},
         {id:"stage10", text:"ステージ10をクリア（完全制覇）", goal:function(){return clearedStages[9]?1:0;}, target:1, unit:""}
@@ -608,6 +608,47 @@
       var sHurricane=function(){tone(180,900,.42,"sine",.1);tone(320,1400,.36,"triangle",.06,.05);tone(900,240,.4,"sine",.07,.12);tone(1400,500,.3,"triangle",.045,.2);};
       var sLifeLost=function(){tone(520,260,.18,"triangle",.09);tone(760,1180,.16,"triangle",.07,.1);};
       var sOver=function(){tone(440,110,.5,"triangle",.09);};
+      /* ---------- BGM (Web Audio生成ループ) ----------
+         スコア系アイテムとは無関係の、軽いチップチューン風ループ。
+         再生はプレイ中のみ。音ON/OFFボタンと連動し、一時停止・終了で止まる。 */
+      var bgmTimer=null, bgmStep=0, bgmNext=0, bgmGain=null;
+      function bgmFreq(midi){ return 440*Math.pow(2,(midi-69)/12); }
+      var BGM_MEL=[76,0,79,0,84,0,79,0, 81,0,79,0,76,0,74,0, 77,0,81,0,84,0,81,0, 79,0,83,0,79,0,74,0];
+      var BGM_BASS=[48,45,41,43];
+      function bgmNote(midi,t,dur,type,vol){
+        if(!audioCtx||!bgmGain) return;
+        var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+        o.type=type; o.frequency.setValueAtTime(bgmFreq(midi),t);
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(vol,t+0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+        o.connect(g); g.connect(bgmGain); o.start(t); o.stop(t+dur+0.03);
+      }
+      function bgmScheduleStep(step,t){
+        var mel=BGM_MEL[step%BGM_MEL.length];
+        if(mel) bgmNote(mel,t,0.19,"square",0.038);
+        if(step%8===0) bgmNote(BGM_BASS[Math.floor(step/8)%4],t,0.34,"triangle",0.075);
+        if(step%8===4) bgmNote(BGM_BASS[Math.floor(step/8)%4]+7,t,0.3,"triangle",0.055);
+        if(step%2===1) bgmNote(102,t,0.035,"sine",0.012);
+      }
+      function bgmTick(){
+        var c=audioCtx; if(!c) return;
+        if(!soundOn||state!=="playing"){ bgmNext=c.currentTime+0.06; return; }
+        if(bgmNext<c.currentTime-0.05) bgmNext=c.currentTime+0.05;
+        while(bgmNext<c.currentTime+0.22){
+          bgmScheduleStep(bgmStep,bgmNext);
+          bgmNext+= (typeof isFever==="function"&&isFever())?0.185:0.215;
+          bgmStep=(bgmStep+1)%BGM_MEL.length;
+        }
+      }
+      function bgmStart(){
+        if(bgmTimer) return;
+        var c=ac(); if(!c) return;
+        if(!bgmGain){ bgmGain=c.createGain(); bgmGain.gain.value=0.9; bgmGain.connect(c.destination); }
+        bgmStep=0; bgmNext=c.currentTime+0.08;
+        bgmTimer=setInterval(bgmTick,70);
+      }
+      function bgmStop(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } }
       function vibrate(ms){ if(navigator.vibrate){ try{navigator.vibrate(ms);}catch(e){} } }
 
       /* ---------- toast ---------- */
@@ -649,15 +690,10 @@
         if(!near.length) return null;
         return near[Math.floor(Math.random()*near.length)];
       }
-      function maybeSpawnGold(force){
-        if(gold) return;
-        var chance = modeKey==="chaos"?0.34:0.24;
-        if(force||Math.random()<chance){
-          var c=(Math.random()<0.72?dangerCell():null)||randomEmptyCell();
-          if(c){gold=c; goldExpires=now()+GOLD_TTL;}
-        }
-      }
-      var POWER_TYPES=["star","launcher","shield","slow","shed","thunder","laser","heart","ghost","hurricane"];
+      /* 金のりんご（ミカン色の得点アイテム）は廃止（2026-11-15 ユーザー指示：
+         スコア専用アイテムは不要）。互換のため関数は残すが出現させない。 */
+      function maybeSpawnGold(force){ gold=null; }
+      var POWER_TYPES=["launcher","shield","slow","shed","thunder","laser","heart","ghost","hurricane"];
       var powerIdx=0;
       /* The launcher appears ONLY near obstacle blocks: a launcher far from
          any rock would be pointless, so its spawn cells hug the rocks
@@ -787,6 +823,7 @@
         if(document.fullscreenElement&&document.exitFullscreen){ document.exitFullscreen().catch(function(){}); }
       }
       function stageClear(){
+        bgmStop();
         state="clear"; lastStep=now(); bombShot=null; launcher=false;
         /* praise the player (Sakurai): confetti + flash + a beat of hit-stop */
         spawnConfetti(); triggerFlash(255,255,255,220,0.3); triggerShake(4,240); triggerHitstop(120);
@@ -916,6 +953,7 @@
       /* ---------- core step ---------- */
       function gameOver(){
         if(state==="over"||state==="clear") return;
+        bgmStop();
         state="over"; lastStep=now(); bombShot=null; launcher=false; invincibleUntil=0; vibrate([60,40,120]); sOver();
         /* Sakurai: death is short and flashy — hit-stop + flash + big shake,
            then the (big) retry button is up almost immediately. */
@@ -929,12 +967,12 @@
         var rank= score>=800?"SS":score>=550?"S":score>=380?"A":score>=220?"B":score>=100?"C":"D";
         ovRank.textContent=rank; ovRank.classList.remove("hidden"); ovRank.style.display="block";
         ovTitle.textContent="ゲームオーバー";
-        ovMsg.textContent= rank==="SS"?"伝説級。もう人間業じゃない。":rank==="S"?"すごい！あと少しで伝説。":rank==="A"?"かなり上手い。Sランクが見えてる。":rank==="B"?"いい調子。コンボを意識すると一気に伸びる。":rank==="C"?"まずは長さ12と5コンボを狙おう。":"金のりんごとコンボが伸びしろ。もう一回！";
+        ovMsg.textContent= rank==="SS"?"伝説級。もう人間業じゃない。":rank==="S"?"すごい！あと少しで伝説。":rank==="A"?"かなり上手い。Sランクが見えてる。":rank==="B"?"いい調子。コンボを意識すると一気に伸びる。":rank==="C"?"まずは長さ12と5コンボを狙おう。":"コンボとりんごが伸びしろ。もう一回！";
         ovNewBest.classList.toggle("show",isBest&&score>0);
         ovFinal.innerHTML=
           "<span>スコア <b>"+score+" 点</b></span><span>ベスト <b>"+best+" 点</b></span>"+
           "<span>長さ <b>"+segCount+"</b></span><span>レベル <b>"+level+"</b></span>"+
-          "<span>りんご <b>"+apples+" 個</b></span><span>金のりんご <b>"+goldEaten+" 個</b></span>"+
+          "<span>りんご <b>"+apples+" 個</b></span><span>⚡ サンダー <b>"+thunderGot+" 回</b></span>"+
           "<span>最大コンボ <b>"+maxCombo+"</b></span><span>生存時間 <b>"+Math.floor(elapsedSec())+" 秒</b></span>"+
           "<span>❤️ ハート <b>"+heartGot+" 個</b></span><span>モード <b>"+({classic:"クラシック",chaos:"カオス"})[modeKey]+"</b></span>"+
           "<span>ミッション <b>"+Object.keys(missionDone).length+" / "+MISSIONS.length+"</b></span><span>残機 <b>"+lives+"</b></span>";
@@ -1787,6 +1825,7 @@
         resetGame();
         nextStageBtn.classList.add("hidden");
         state="playing";
+        bgmStart();
         runStart=now(); lastStep=0; elapsedBefore=0;
         overlay.classList.add("hidden");
         gameMenu.classList.add("hidden");
@@ -1802,6 +1841,7 @@
         else toast("ステージ"+(currentStage+1)+"開始！");
       }
       function showPauseOverlay(){
+        bgmStop();
         pauseBtn.textContent="▶ 再開";
         ovRank.style.display="none"; ovFinal.classList.remove("show"); ovNewBest.classList.remove("show");
         if(ovMeters) ovMeters.classList.add("hidden");
@@ -1813,6 +1853,7 @@
       }
       function resumeGame(){
         state="playing";
+        bgmStart();
         elapsedBefore+=now()-pausedAt; pausedAt=0; lastStep=0;
         overlay.classList.add("hidden");
         gameMenu.classList.add("hidden");
@@ -1836,6 +1877,7 @@
       }
       function openMenu(){
         if(state!=="playing") return;
+        bgmStop();
         state="paused"; pausedAt=now();
         updateMenuInfo();
         gameMenu.classList.remove("hidden");
@@ -1900,7 +1942,7 @@
         soundBtn.textContent=soundOn?"🔊 音 ON":"🔇 音 OFF";
         menuSoundBtn.textContent=soundBtn.textContent;
         soundBtn.setAttribute("aria-pressed",soundOn?"true":"false");
-        if(soundOn) sEat();
+        if(soundOn){ sEat(); if(state==="playing") bgmStart(); } else bgmStop();
       });
 
       document.querySelectorAll(".mode-chip").forEach(function(chip){
