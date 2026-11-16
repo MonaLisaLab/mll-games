@@ -126,6 +126,10 @@
         font-size:9.5px; font-weight:800; border-radius:6px; padding:2px 5px;
       }
       #buildRow{ display:flex; gap:6px; margin-top:8px; }
+      #towerInfo{
+        margin-top:8px; background:var(--panel2); border:1px solid var(--line);
+        border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.65;
+      }
       #buildBtn{ flex:1; font-size:16px; }
       #panelMsg{ font-size:13px; line-height:1.6; }
       .actrow{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
@@ -186,6 +190,7 @@
           <h1>まもりの塔</h1>
           <p>うねる道を進む魔物たちから、お城を守り抜け！<br>
           道のそばにタワーを建てて迎え撃とう。全15ウェーブ。<br>
+          魔物は近くのタワーを攻撃してくる。タワーのHPにも気をつけよう。<br>
           ゴール直前で倒すと <b style="color:#ffd95e">ボーナスコイン</b> がもらえるぞ。</p>
           <button class="big-btn" id="fsStartBtn">⛶ 全画面でスタート</button>
           <button class="sub-btn" id="startBtn">そのままスタート</button>
@@ -215,6 +220,7 @@
             <button class="hbtn primary" id="buildBtn">🏗 建てる</button>
             <button class="hbtn" id="cancelSelBtn">✕ 選択解除</button>
           </div>
+          <div id="towerInfo"></div>
         </div>
         <div id="towerUI" hidden>
           <div id="panelMsg"></div>
@@ -289,37 +295,37 @@
     /* ================= タワー・敵データ ================= */
     var TOWERS = {
       arrow:  { name:'弓塔', icon:'🏹', cost:100, desc:'速い連射・射程中', upCost:[80,140],
-                levels:[ {dmg:8, rate:0.34, range:2.6}, {dmg:13, rate:0.31, range:2.7}, {dmg:21, rate:0.27, range:2.9} ] },
+                levels:[ {dmg:8, rate:0.34, range:2.6, hp:90}, {dmg:13, rate:0.31, range:2.7, hp:130}, {dmg:21, rate:0.27, range:2.9, hp:180} ] },
       cannon: { name:'砲塔', icon:'💣', cost:200, desc:'遅いが範囲ダメージ', upCost:[150,240],
-                levels:[ {dmg:24, rate:1.35, range:2.8, splash:1.05}, {dmg:38, rate:1.25, range:2.9, splash:1.2}, {dmg:58, rate:1.15, range:3.0, splash:1.35} ] },
+                levels:[ {dmg:24, rate:1.35, range:2.8, splash:1.05, hp:150}, {dmg:38, rate:1.25, range:2.9, splash:1.2, hp:200}, {dmg:58, rate:1.15, range:3.0, splash:1.35, hp:270} ] },
       ice:    { name:'氷塔', icon:'❄️', cost:150, desc:'当てた敵をスロウ', upCost:[110,190], unlockWave:3,
-                levels:[ {dmg:4, rate:0.6, range:2.4, slow:0.40, slowDur:1.5}, {dmg:7, rate:0.55, range:2.5, slow:0.50, slowDur:2.0}, {dmg:11, rate:0.5, range:2.6, slow:0.60, slowDur:2.5} ] },
+                levels:[ {dmg:4, rate:0.6, range:2.4, slow:0.40, slowDur:1.5, hp:110}, {dmg:7, rate:0.55, range:2.5, slow:0.50, slowDur:2.0, hp:150}, {dmg:11, rate:0.5, range:2.6, slow:0.60, slowDur:2.5, hp:210} ] },
       bolt:   { name:'雷塔', icon:'⚡', cost:300, desc:'チェーン攻撃', upCost:[220,360], unlockWave:5,
-                levels:[ {dmg:16, rate:0.9, range:3.0, chain:3}, {dmg:25, rate:0.85, range:3.1, chain:4}, {dmg:38, rate:0.8, range:3.3, chain:5} ] }
+                levels:[ {dmg:16, rate:0.9, range:3.0, chain:3, hp:120}, {dmg:25, rate:0.85, range:3.1, chain:4, hp:170}, {dmg:38, rate:0.8, range:3.3, chain:5, hp:240} ] }
     };
     var TOWER_ORDER = ['arrow','cannon','ice','bolt'];
     var ENEMIES = {
-      slime: { hp:30,  speed:0.85, reward:10, score:10, r:16, dmg:1 },
-      bat:   { hp:18,  speed:1.50, reward:12, score:15, r:13, dmg:1 },
-      golem: { hp:135, speed:0.50, reward:28, score:30, r:19, dmg:1 },
-      boss:  { hp:850, speed:0.42, reward:350, score:500, r:30, dmg:2 }
+      slime: { hp:30,  speed:0.85, reward:10, score:10, r:16, dmg:1, atk:6,  atkRate:0.9 },
+      bat:   { hp:18,  speed:1.50, reward:12, score:15, r:13, dmg:1, atk:4,  atkRate:0.7 },
+      golem: { hp:135, speed:0.50, reward:28, score:30, r:19, dmg:1, atk:18, atkRate:1.2 },
+      boss:  { hp:850, speed:0.42, reward:350, score:500, r:30, dmg:2, atk:40, atkRate:1.1 }
     };
     var WAVES = [
       [['slime',6]],
       [['slime',9]],
-      [['slime',8],['bat',3]],
-      [['slime',10],['bat',4]],
-      [['slime',4],['boss',1],['slime',4]],
+      [['slime',9],['bat',4]],
       [['slime',12],['bat',5]],
-      [['slime',8],['golem',3],['bat',3]],
-      [['bat',14],['slime',8]],
-      [['golem',5],['slime',10]],
-      [['slime',6],['boss',1],['golem',3]],
-      [['slime',16],['bat',8]],
-      [['golem',7],['bat',10]],
-      [['slime',18],['golem',5]],
-      [['golem',9],['bat',12],['slime',8]],
-      [['slime',8],['boss',1],['golem',4],['bat',8]]
+      [['slime',5],['boss',1],['slime',5]],
+      [['slime',14],['bat',6]],
+      [['slime',10],['golem',4],['bat',4]],
+      [['bat',16],['slime',10]],
+      [['golem',6],['slime',12]],
+      [['slime',8],['boss',1],['golem',4]],
+      [['slime',20],['bat',10]],
+      [['golem',9],['bat',12]],
+      [['slime',22],['golem',6]],
+      [['golem',11],['bat',14],['slime',10]],
+      [['slime',10],['boss',1],['golem',5],['bat',10]]
     ];
     var MISSIONS = [
       { id:'wave5',   label:'ウェーブ5に到達する',        target:1 },
@@ -523,13 +529,15 @@
     }
     function spawnEnemy(type){
       var base = ENEMIES[type];
-      var mul = 1 + (G.wave - 1) * 0.20;
-      if (type === 'boss') mul = 1 + (G.wave - 5) * 0.45;
+      var mul = 1 + (G.wave - 1) * 0.28;
+      if (type === 'boss') mul = 1 + (G.wave - 5) * 0.55;
       var hp = Math.round(base.hp * mul);
       G.enemies.push({
-        type:type, hp:hp, maxHp:hp, dist:-Math.random()*6, speed:base.speed * CELL,
+        type:type, hp:hp, maxHp:hp, dist:-Math.random()*6,
+        speed:base.speed * CELL * (1 + (G.wave - 1) * 0.01),
         r:base.r, reward:base.reward, score:base.score, dmg:base.dmg,
-        slowUntil:0, slowFactor:0, phase:Math.random()*Math.PI*2, flashT:0, x:0, y:0, dead:false
+        slowUntil:0, slowFactor:0, phase:Math.random()*Math.PI*2, flashT:0, x:0, y:0, dead:false,
+        atkCool:0.3, atkT:null
       });
     }
     function waveCleared(){
@@ -576,6 +584,31 @@
 
     /* ================= 戦闘 ================= */
     function towerStats(t){ return TOWERS[t.type].levels[t.level - 1]; }
+    /* ---- タワーへの攻撃 ---- */
+    var lastTowerSfx = 0;
+    function damageTower(t, dmg, src){
+      t.hp -= dmg;
+      t.flashT = 0.12;
+      var ang = src ? Math.atan2(src.y - t.y, src.x - t.x) : 0;
+      burst(t.x + Math.cos(ang) * 14, t.y + Math.sin(ang) * 10, '#c9a44a', 3, 70, 2.4, 200);
+      if (G.time - lastTowerSfx > 0.15){
+        lastTowerSfx = G.time;
+        tone(190, 0.07, 'square', 0.13, 110);
+        noiseBurst(0.05, 0.1, 900);
+      }
+      if (t.hp <= 0) destroyTower(t);
+      else if (G.sel && G.sel.c === t.c && G.sel.r === t.r) renderPanel();
+    }
+    function destroyTower(t){
+      G.towers = G.towers.filter(function(x){ return x !== t; });
+      burst(t.x, t.y, '#9aa3ad', 16, 130, 3.6);
+      burst(t.x, t.y, '#ff9d5c', 8, 100, 3);
+      G.booms.push({ x:t.x, y:t.y, r:6, maxR:40, life:0.3, maxLife:0.3 });
+      G.shake = Math.max(G.shake, 4);
+      floater(t.x, t.y - 30, 'タワー破壊！', '#ff7a5c', true);
+      SFX.boom();
+      refreshUI();
+    }
     function damageEnemy(e, dmg, srcType){
       if (e.dead) return;
       e.hp -= dmg; e.flashT = 0.08;
@@ -676,18 +709,38 @@
         G.spawnTimer -= dt;
         if (G.spawnTimer <= 0){
           spawnEnemy(G.spawnQueue.shift());
-          G.spawnTimer = G.wave % 5 === 0 ? 1.0 : 0.85;
+          G.spawnTimer = G.wave % 5 === 0 ? 0.9 : Math.max(0.55, 0.8 - G.wave * 0.02);
         }
       }
-      /* 敵移動 */
+      /* 敵移動＆タワー攻撃 */
       for (var i = 0; i < G.enemies.length; i++){
         var e = G.enemies[i];
         if (e.dead) continue;
-        var slowed = G.time < e.slowUntil;
-        var sp = e.speed * (slowed ? (1 - e.slowFactor) : 1);
-        e.dist += sp * dt;
-        var pos = posAt(Math.max(0, e.dist));
-        e.x = pos.x; e.y = pos.y; e.ang = pos.ang;
+        /* 進路に近いタワー（隣接マス相当＝74px以内）があれば足を止めて攻撃 */
+        var atkT = null;
+        if (e.dist >= 0){
+          var bestD = 74;
+          for (var ti = 0; ti < G.towers.length; ti++){
+            var tw = G.towers[ti];
+            var dd = Math.hypot(tw.x - e.x, tw.y - e.y);
+            if (dd < bestD){ bestD = dd; atkT = tw; }
+          }
+        }
+        e.atkT = atkT;
+        if (atkT){
+          e.atkCool -= dt;
+          if (e.atkCool <= 0){
+            e.atkCool = ENEMIES[e.type].atkRate;
+            damageTower(atkT, ENEMIES[e.type].atk, e);
+          }
+        } else {
+          var slowed = G.time < e.slowUntil;
+          var sp = e.speed * (slowed ? (1 - e.slowFactor) : 1);
+          e.dist += sp * dt;
+          var pos = posAt(Math.max(0, e.dist));
+          e.x = pos.x; e.y = pos.y; e.ang = pos.ang;
+          if (e.atkCool < 0.3) e.atkCool = 0.3;
+        }
         if (e.flashT > 0) e.flashT -= dt;
         if (e.dist >= TOTAL_LEN){
           e.dead = true; e.leaked = true;
@@ -706,6 +759,7 @@
       G.towers.forEach(function(t){
         if (t.cool > 0) t.cool -= dt;
         if (t.recoil > 0) t.recoil = Math.max(0, t.recoil - dt * 6);
+        if (t.flashT > 0) t.flashT -= dt;
         var st = towerStats(t);
         var range = st.range * CELL;
         var target = null;
@@ -977,6 +1031,19 @@
           var sx = x - 12 + s * 12, sy = y + 24;
           ctx.moveTo(sx, sy - 4); ctx.lineTo(sx + 3, sy); ctx.lineTo(sx, sy + 4); ctx.lineTo(sx - 3, sy); ctx.fill();
         }
+        /* 被ダメージ時のフラッシュ */
+        if (t.flashT > 0){
+          ctx.fillStyle = 'rgba(255,80,60,' + (t.flashT / 0.12 * 0.45) + ')';
+          ctx.beginPath(); ctx.arc(x, y - 2, 22, 0, 7); ctx.fill();
+        }
+        /* HPバー（ダメージを受けたときだけ表示） */
+        if (t.hp < t.maxHp){
+          var hr = Math.max(0, t.hp / t.maxHp), bw = 42;
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.fillRect(x - bw/2 - 1, y - 39, bw + 2, 6);
+          ctx.fillStyle = hr > 0.35 ? '#7ec850' : '#e5533d';
+          ctx.fillRect(x - bw/2, y - 38, bw * hr, 4);
+        }
       });
     }
     function drawEnemies(){
@@ -985,6 +1052,10 @@
       list.forEach(function(e){
         var bob = Math.sin(G.time * (e.type === 'bat' ? 14 : 9) + e.phase);
         var x = e.x, y = e.y + (e.type === 'bat' ? -8 + bob * 2.4 : bob * 1.6);
+        if (e.atkT && e.atkCool > ENEMIES[e.type].atkRate - 0.15){
+          var la = Math.atan2(e.atkT.y - e.y, e.atkT.x - e.x);
+          x += Math.cos(la) * 4; y += Math.sin(la) * 4;
+        }
         var slowed = G.time < e.slowUntil;
         ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.beginPath(); ctx.ellipse(e.x, e.y + e.r * 0.82, e.r * 0.8, e.r * 0.26, 0, 0, 7); ctx.fill();
@@ -1173,7 +1244,7 @@
     /* ================= UI ================= */
     var el = {};
     ['stCoins','stLife','stWave','stScore','stBest','waveBtn','speedBtn','nextReward','waveInfo',
-     'panelTitle','buildUI','towerUI','idleMsg','towerCards','buildBtn','upBtn','sellBtn','panelMsg','panelMsg2','hint']
+     'panelTitle','buildUI','towerUI','idleMsg','towerCards','buildBtn','upBtn','sellBtn','panelMsg','panelMsg2','hint','towerInfo']
       .forEach(function(id){ el[id] = document.getElementById(id); });
 
     function refreshHUD(){
@@ -1235,19 +1306,40 @@
         });
         el.towerCards.appendChild(b);
       });
+      renderTowerInfo();
+    }
+    /* 選択中タワーの説明（設置前に確認できる情報パネル） */
+    function towerInfoHTML(type){
+      var d = TOWERS[type];
+      var l1 = d.levels[0], l3 = d.levels[2];
+      var special;
+      if (type === 'cannon') special = '特殊効果：着弾点の周囲にも範囲ダメージ（範囲 ' + l1.splash.toFixed(1) + '）';
+      else if (type === 'ice') special = '特殊効果：当てた敵を ' + Math.round(l1.slow * 100) + '% スロウ（' + l1.slowDur + '秒）';
+      else if (type === 'bolt') special = '特殊効果：近くの敵へ最大 ' + l1.chain + ' 体まで連鎖攻撃';
+      else special = '特殊効果：なし（連射が速く安定した火力）';
+      return d.icon + ' <b>' + d.name + '</b>　🪙' + d.cost +
+        (towerLocked(type) ? '　🔒 ウェーブ' + d.unlockWave + 'クリアで解放' : '') +
+        '<br>威力 ' + l1.dmg + '（Lv3で ' + l3.dmg + '）／ 射程 ' + l1.range.toFixed(1) +
+        '<br>連射 ' + l1.rate + '秒に1発（約' + (1 / l1.rate).toFixed(1) + '発/秒）／ HP ' + l1.hp + '（Lv3で ' + l3.hp + '）' +
+        '<br>' + special +
+        '<br><span style="opacity:.75">魔物は進路に近いタワーを攻撃します。HPが0になると破壊されるので注意！</span>';
+    }
+    function renderTowerInfo(){
+      if (el.towerInfo) el.towerInfo.innerHTML = towerInfoHTML(G.previewType);
     }
     function renderPanel(){
       var t = G.sel ? towerAt(G.sel.c, G.sel.r) : null;
       if (G.sel && t){
         el.buildUI.hidden = true; el.idleMsg.hidden = true; el.towerUI.hidden = false;
         var d = TOWERS[t.type], st = towerStats(t);
-        var sellVal = Math.floor(t.invested * 0.7);
+        var sellVal = Math.floor(t.invested * 0.7 * t.hp / t.maxHp);
         el.panelTitle.textContent = '選択中のタワー';
         el.panelMsg.innerHTML = d.icon + ' <b>' + d.name + '</b> <span class="lvstars">' + '◆'.repeat(t.level) + '◇'.repeat(3 - t.level) + '</span> Lv.' + t.level +
           '<br>威力 ' + st.dmg + ' ／ 射程 ' + st.range.toFixed(1) +
           (st.splash ? ' ／ 範囲 ' + st.splash.toFixed(1) : '') +
           (st.slow ? ' ／ スロウ ' + Math.round(st.slow * 100) + '%' : '') +
-          (st.chain ? ' ／ チェーン ' + st.chain + '体' : '');
+          (st.chain ? ' ／ チェーン ' + st.chain + '体' : '') +
+          '<br>HP ' + Math.ceil(t.hp) + ' / ' + t.maxHp + (t.hp < t.maxHp ? '（傷ついたタワーは売却額ダウン）' : '');
         if (t.level >= 3){
           el.upBtn.textContent = '⬆ 最大レベル';
           el.upBtn.disabled = true;
@@ -1284,7 +1376,8 @@
       G.coins -= d.cost;
       var cc = cellCenter(G.sel.c, G.sel.r);
       G.towers.push({ type:type, level:1, c:G.sel.c, r:G.sel.r, x:cc.x, y:cc.y,
-                      cool:0, recoil:0, ang:-Math.PI/2, invested:d.cost, target:null });
+                      cool:0, recoil:0, ang:-Math.PI/2, invested:d.cost, target:null,
+                      hp:d.levels[0].hp, maxHp:d.levels[0].hp, flashT:0 });
       G.stats.built++;
       burst(cc.x, cc.y, '#d8c690', 10, 80, 3);
       SFX.build();
@@ -1297,6 +1390,8 @@
       var cost = TOWERS[t.type].upCost[t.level - 1];
       if (G.coins < cost){ SFX.error(); return; }
       G.coins -= cost; t.invested += cost; t.level++;
+      var nh = TOWERS[t.type].levels[t.level - 1].hp;
+      t.hp += nh - t.maxHp; t.maxHp = nh;
       burst(t.x, t.y - 6, '#ffd95e', 14, 90, 3);
       floater(t.x, t.y - 34, 'Lv.' + t.level + '！', '#ffd95e');
       SFX.build();
@@ -1305,7 +1400,7 @@
     function sellTower(){
       var t = G.sel ? towerAt(G.sel.c, G.sel.r) : null;
       if (!t) return;
-      var val = Math.floor(t.invested * 0.7);
+      var val = Math.floor(t.invested * 0.7 * t.hp / t.maxHp);
       G.coins += val;
       G.towers = G.towers.filter(function(x){ return x !== t; });
       coinBurst(t.x, t.y, 8);
