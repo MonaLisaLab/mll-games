@@ -12,14 +12,14 @@
         --bg:#1d2b1a; --bg2:#243620; --panel:#2e4226; --panel2:#38512d;
         --ink:#f3ecd9; --ink-dim:#c9bd97; --accent:#f2b63c; --accent2:#7ec850;
         --danger:#e5533d; --line:#54683f; --btn:#42582f; --btn-hi:#5a7a3c;
-        --card:#33482a; --panelA:rgba(38,56,30,.88);
+        --card:#33482a;
       }
       @media (prefers-color-scheme: light){
         :root{
           --bg:#dfe8cf; --bg2:#cfdcba; --panel:#f4eedb; --panel2:#ece2c6;
           --ink:#2c331f; --ink-dim:#6b6a4e; --accent:#c07f13; --accent2:#3f7d1e;
           --danger:#c23a24; --line:#b3ac8d; --btn:#e6dcbc; --btn-hi:#d9cca2;
-          --card:#efe8d0; --panelA:rgba(246,241,224,.92);
+          --card:#efe8d0;
         }
       }
       html,body{ margin:0; padding:0; height:100%; height:100dvh; overscroll-behavior:none; }
@@ -36,36 +36,67 @@
          scrolls: body is fixed and a touchmove guard in the script
          blocks rubber-band scrolling outside internal scrollers. */
       #app{ position:fixed; inset:0; overflow:hidden; }
-      /* ---------- HUD ---------- */
+      /* ---------- HUD: minimal floating chips on the map ----------
+         No bar and no band: the HUD is only small translucent chips
+         and icon buttons floating over the top of the board, so it
+         never takes layout space away from the playable area. */
       #hud{
         position:fixed; top:0; left:0; right:0; z-index:40;
-        background:var(--panelA); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
-        border-bottom:1px solid var(--line);
-        padding:calc(6px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) 7px calc(10px + env(safe-area-inset-left));
+        pointer-events:none;
+        padding:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) 0 calc(8px + env(safe-area-inset-left));
       }
-      #hud .row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
-      #hud .row + .row{ margin-top:6px; }
-      .stat{
-        background:var(--panel2); border:1px solid var(--line); border-radius:8px;
-        padding:4px 8px; font-size:14px; font-weight:700; white-space:nowrap;
-        display:inline-flex; align-items:center; gap:4px; min-height:32px;
-      }
-      .stat small{ font-weight:600; color:var(--ink-dim); font-size:11px; }
-      .stat .ico{ font-size:15px; }
+      #hud .hrow{ display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+      #hud .hrow + .hrow{ margin-top:5px; }
       #hud .spacer{ flex:1; }
+      .chip{
+        background:rgba(18,28,12,.72); color:#f3ecd9; border:1px solid rgba(255,255,255,.16);
+        border-radius:999px; padding:3px 9px; font-size:13px; font-weight:700; white-space:nowrap;
+        display:inline-flex; align-items:center; gap:4px; min-height:26px;
+        -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+      }
+      .ibtn{
+        pointer-events:auto;
+        background:rgba(18,28,12,.72); color:#f3ecd9; border:1px solid rgba(255,255,255,.16);
+        border-radius:10px; width:36px; height:36px; font-size:16px;
+        cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center;
+        -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+      }
+      .ibtn:hover{ background:rgba(40,58,24,.88); }
+      .pillbtn{
+        pointer-events:auto;
+        background:rgba(18,28,12,.72); color:#f3ecd9; border:1px solid rgba(255,255,255,.16);
+        border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:700;
+        cursor:pointer; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;
+        -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+      }
+      .pillbtn:hover{ background:rgba(40,58,24,.88); }
+      .pillbtn:disabled{ opacity:.45; cursor:default; }
+      .pillbtn.primary{ background:#f2b63c; color:#3a2a05; border-color:#a97a17; }
+      .pillbtn.primary:hover{ filter:brightness(1.08); }
+      .pillbtn.primary:disabled{ background:rgba(18,28,12,.72); color:#f3ecd9; border-color:rgba(255,255,255,.16); }
+      /* Buttons inside the control panel (build / upgrade / sell …) */
       .hbtn{
-        background:var(--btn); color:var(--ink); border:1px solid var(--line);
+        background:rgba(255,255,255,.12); color:#f3ecd9; border:1px solid rgba(255,255,255,.25);
         border-radius:8px; padding:6px 10px; font-size:14px; font-weight:700;
         cursor:pointer; text-decoration:none; display:inline-flex; align-items:center;
         justify-content:center; gap:4px; min-width:40px;
       }
-      .hbtn:hover{ background:var(--btn-hi); }
+      .hbtn:hover{ background:rgba(255,255,255,.22); }
       .hbtn:disabled{ opacity:.45; cursor:default; }
-      .hbtn.primary{ background:var(--accent); color:#3a2a05; border-color:#a97a17; }
+      .hbtn.primary{ background:#f2b63c; color:#3a2a05; border-color:#a97a17; }
       .hbtn.primary:hover{ filter:brightness(1.08); }
-      .hbtn.primary:disabled{ background:var(--btn); color:var(--ink); border-color:var(--line); }
-      #nextReward{ font-size:12.5px; color:var(--accent); font-weight:700; }
-      #waveInfo{ font-size:12.5px; color:var(--ink-dim); font-weight:600; }
+      .hbtn.primary:disabled{ background:rgba(255,255,255,.12); color:#f3ecd9; border-color:rgba(255,255,255,.25); }
+      #waveInfo{
+        font-size:11px; font-weight:700; color:#ffe9a8; white-space:nowrap;
+        background:rgba(18,28,12,.6); border-radius:999px; padding:3px 8px;
+      }
+      #waveInfo:empty{ display:none; }
+      #nextReward{
+        font-size:11px; font-weight:700; color:#ffd23e; white-space:nowrap;
+        background:rgba(18,28,12,.6); border-radius:999px; padding:3px 8px;
+        max-width:100%; overflow:hidden; text-overflow:ellipsis;
+      }
+      #nextReward:empty{ display:none; }
       /* ---------- Stage: the board canvas itself fills the screen ---------- */
       canvas#game{
         position:fixed; inset:0; z-index:1;
@@ -73,13 +104,13 @@
         border:none; border-radius:0; touch-action:none; background:#79a84b;
       }
       #hint{
-        position:fixed; left:50%; bottom:150px; transform:translateX(-50%); z-index:50;
+        position:fixed; left:50%; top:calc(148px + env(safe-area-inset-top)); transform:translateX(-50%); z-index:50;
         background:rgba(20,28,14,.85); color:#ffe9a8; font-size:13px; font-weight:700;
         padding:7px 12px; border-radius:999px; pointer-events:none; white-space:nowrap;
         max-width:94%; overflow:hidden; text-overflow:ellipsis;
       }
       #toast{
-        position:fixed; left:50%; top:120px; transform:translateX(-50%) translateY(-6px);
+        position:fixed; left:50%; top:calc(108px + env(safe-area-inset-top)); transform:translateX(-50%) translateY(-6px);
         background:rgba(20,28,14,.92); color:#ffd95e; font-size:14px; font-weight:800;
         padding:8px 14px; border-radius:10px; pointer-events:none; opacity:0;
         transition:opacity .25s, transform .25s; text-align:center; max-width:92%;
@@ -110,36 +141,40 @@
       }
       .overlay .score-line{ font-size:16px; font-weight:800; color:#fff; }
       .overlay .mini{ font-size:12px; color:#bdb894; }
-      /* ---------- Control panel ---------- */
+      /* ---------- Control panel: compact translucent overlay ----------
+         The panel floats over the bottom of the board. It is NOT a
+         layout band: the board fit never accounts for it, so opening,
+         closing or resizing the panel never moves the board. */
       #panel{
         position:fixed; left:0; right:0; bottom:0; z-index:40;
-        background:var(--panelA); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
-        border-top:1px solid var(--line);
+        background:rgba(18,28,12,.8); color:#f3ecd9;
+        -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);
+        border-top:1px solid rgba(255,255,255,.16);
         padding:8px calc(10px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
         max-height:64dvh; overflow-y:auto;
       }
-      #panel .ptitle{ font-size:13px; font-weight:800; color:var(--ink-dim); margin-bottom:8px; }
+      #panel .ptitle{ font-size:12.5px; font-weight:800; color:rgba(243,236,217,.65); margin-bottom:7px; }
       #towerCards{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
       .tcard{
-        background:var(--card); border:2px solid var(--line); border-radius:10px;
-        padding:7px 4px 6px; cursor:pointer; text-align:center; color:var(--ink);
+        background:rgba(255,255,255,.08); border:2px solid rgba(255,255,255,.22); border-radius:10px;
+        padding:7px 4px 6px; cursor:pointer; text-align:center; color:#f3ecd9;
         font-family:inherit; position:relative;
       }
       .tcard .tic{ font-size:24px; line-height:1.15; display:block; }
       .tcard .tname{ font-size:13px; font-weight:800; display:block; }
-      .tcard .tdesc{ font-size:10.5px; color:var(--ink-dim); display:block; line-height:1.35; min-height:28px; }
-      .tcard .tcost{ font-size:12.5px; font-weight:800; color:var(--accent); display:block; }
-      .tcard.sel{ border-color:var(--accent); box-shadow:0 0 0 2px #f2b63c55; }
+      .tcard .tdesc{ font-size:10.5px; color:rgba(243,236,217,.6); display:block; line-height:1.35; min-height:28px; }
+      .tcard .tcost{ font-size:12.5px; font-weight:800; color:#ffd23e; display:block; }
+      .tcard.sel{ border-color:#f2b63c; box-shadow:0 0 0 2px rgba(242,182,60,.35); background:rgba(242,182,60,.14); }
       .tcard.locked{ opacity:.55; cursor:default; }
-      .tcard.poor .tcost{ color:var(--danger); }
+      .tcard.poor .tcost{ color:#ff8a75; }
       .tcard .locktag{
         position:absolute; top:4px; right:4px; background:#00000088; color:#ffd95e;
         font-size:9.5px; font-weight:800; border-radius:6px; padding:2px 5px;
       }
       #buildRow{ display:flex; gap:6px; margin-top:8px; }
       #towerInfo{
-        margin-top:8px; background:var(--panel2); border:1px solid var(--line);
-        border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.65;
+        margin-top:8px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18);
+        border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.65; color:#f3ecd9;
         max-height:24dvh; overflow-y:auto;
       }
       #buildBtn{ flex:1; font-size:16px; }
@@ -151,8 +186,8 @@
       /* Missions live in a toggleable sheet over the shell (opened with
          the 🏅 button) so the board keeps the full viewport height. */
       #missions{
-        position:fixed; left:8px; right:8px; bottom:180px;
-        z-index:55; max-height:60dvh; overflow-y:auto; display:none;
+        position:fixed; left:8px; right:8px; bottom:calc(10px + env(safe-area-inset-bottom));
+        z-index:55; max-height:70dvh; overflow-y:auto; display:none;
         background:var(--panel); border:1px solid var(--line); border-radius:10px;
         padding:10px; box-shadow:0 14px 34px rgba(0,0,0,.45);
       }
@@ -174,48 +209,52 @@
         #panel{ max-height:56dvh; }
       }
       @media (max-height:560px){
-        #hud .row + .row{ margin-top:4px; }
-        .stat{ min-height:28px; font-size:13px; }
+        #hud .hrow + .hrow{ margin-top:4px; }
+        .chip{ min-height:24px; font-size:12px; }
         .tcard .tdesc{ display:none; }
         #towerInfo{ max-height:18dvh; }
       }
-      /* Landscape / wide: the canvas still fills the whole screen, but
-         the HUD and the control panel move into a 360px right-hand
-         column (fitStage reserves the same 360px), so the board keeps
-         the full height instead of being squeezed between the bars.
+      /* Landscape / wide: same principle as portrait — the board uses
+         the full viewport and the UI only floats on top of it. The
+         control panel is just capped in width and centred so the tower
+         cards do not stretch across a wide screen.
          (#helpLine stays hidden; keyboard help lives in the title text.) */
       @media (orientation:landscape) and (min-width:600px){
-        #hud{ left:auto; width:360px; border-left:1px solid var(--line); }
-        #panel{ left:auto; width:360px; border-left:1px solid var(--line); max-height:56dvh; }
-        #missions{ left:auto; width:352px; }
+        #panel{
+          left:0; right:0; margin:0 auto; max-width:640px; max-height:56dvh;
+          border-left:1px solid rgba(255,255,255,.16); border-right:1px solid rgba(255,255,255,.16);
+          border-radius:12px 12px 0 0;
+        }
+        #missions{ left:0; right:0; margin:0 auto; max-width:560px; }
         #towerInfo{ max-height:32dvh; }
       }
     </style>
   </head>
   <body>
     <div id="app">
-      <!-- HUD -->
+      <!-- HUD: only small floating chips and icon buttons on the map.
+           No best score here (it lives on the title / game-over screens)
+           and no band: nothing here takes space from the board. -->
       <div id="hud">
-        <div class="row">
-          <span class="stat"><span class="ico">🪙</span><span id="stCoins">0</span></span>
-          <span class="stat"><span class="ico">❤️</span><span id="stLife">10</span></span>
-          <span class="stat"><small>ウェーブ</small><span id="stWave">– / 15</span></span>
-          <span class="stat"><small>スコア</small><span id="stScore">0</span></span>
-          <span class="stat"><small>ベスト</small><span id="stBest">0</span></span>
-        </div>
-        <div class="row">
-          <button class="hbtn primary" id="waveBtn">▶ ウェーブ開始</button>
-          <button class="hbtn" id="speedBtn" title="速度切替">×1</button>
-          <button class="hbtn" id="pauseBtn" title="ポーズ">⏸</button>
-          <button class="hbtn" id="muteBtn" title="ミュート">🔊</button>
-          <button class="hbtn" id="missionBtn" title="ミッション">🏅</button>
+        <div class="hrow">
+          <span class="chip">🪙<span id="stCoins">0</span></span>
+          <span class="chip">❤️<span id="stLife">10</span></span>
+          <span class="chip">W<span id="stWave">– / 15</span></span>
+          <span class="chip">⭐<span id="stScore">0</span></span>
           <span class="spacer"></span>
-          <a class="hbtn" href="../index.html" title="トップページへ戻る">🏠 トップ</a>
+          <a class="ibtn" href="../index.html" title="トップページへ戻る">🏠</a>
         </div>
-        <div class="row">
-          <span id="nextReward"></span>
+        <div class="hrow">
+          <button class="pillbtn primary" id="waveBtn">▶ ウェーブ開始</button>
+          <button class="ibtn" id="speedBtn" title="速度切替">×1</button>
+          <button class="ibtn" id="pauseBtn" title="ポーズ">⏸</button>
+          <button class="ibtn" id="muteBtn" title="ミュート">🔊</button>
+          <button class="ibtn" id="missionBtn" title="ミッション">🏅</button>
           <span class="spacer"></span>
           <span id="waveInfo"></span>
+        </div>
+        <div class="hrow">
+          <span id="nextReward"></span>
         </div>
       </div>
 
@@ -233,6 +272,7 @@
           <button class="big-btn" id="fsStartBtn">⛶ 全画面でスタート</button>
           <button class="sub-btn" id="startBtn">そのままスタート</button>
           <p class="mini">弓塔100 / 砲塔200 / 氷塔150（W3解放）/ 雷塔300（W5解放）<br>スタートするとウェーブ1がすぐ始まります</p>
+          <p class="mini">ベストスコア <span id="stBest">0</span></p>
         </div>
 
         <div class="overlay" id="pauseOverlay" hidden>
@@ -288,17 +328,17 @@
     var COLS = 7, ROWS = 11, CELL = 64, W = COLS * CELL, H = ROWS * CELL;
     var canvas = document.getElementById('game');
     var ctx = canvas.getContext('2d');
-    var hudEl = document.getElementById('hud');
-    var panelEl = document.getElementById('panel');
-    var toastEl = document.getElementById('toast');
-    var hintEl = document.getElementById('hint');
-    var missionsSheetEl = document.getElementById('missions');
     /* The canvas covers the whole viewport edge-to-edge. The playable
-       board (logical 448x704) is scaled to fit in the band between the
-       HUD bar (top) and the control panel (bottom) so the road, the
-       entrance and the castle are never hidden behind UI; the rest of
-       the screen is filled by extending the same grass tiles beyond the
-       board edges (see drawMap). view.ox / view.oy are the board's
+       board (logical 448x704) is scaled to fit the WHOLE viewport and
+       centred; the leftover screen is filled by extending the same
+       grass tiles beyond the board edges (see drawMap). Every UI
+       element (HUD chips, control panel, sheets) only floats on top
+       of the board as an overlay and never takes space away from it.
+       IMPORTANT: the board fit depends ONLY on the viewport size and
+       orientation — never on any UI state (panel height, selection,
+       open sheets). There is deliberately no ResizeObserver on UI
+       elements, so tapping a cell or a tower can never shift, resize
+       or tilt the board view. view.ox / view.oy are the board's
        top-left corner in CSS pixels, view.scale is CSS px per logical
        unit, and draw() re-applies the transform every frame. */
     var view = { w:0, h:0, scale:1, ox:0, oy:0 };
@@ -308,26 +348,12 @@
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
       var bw = Math.round(vw * dpr), bh = Math.round(vh * dpr);
       if (canvas.width !== bw || canvas.height !== bh){ canvas.width = bw; canvas.height = bh; }
-      var topH = hudEl.offsetHeight || 0, botH = panelEl.offsetHeight || 0;
-      /* Wide landscape: the bars move into a 360px right-hand column
-         (see the CSS media query) and the board uses the rest. */
-      var sideW = (vw >= 600 && vw > vh) ? 360 : 0;
-      var availW = vw - sideW;
-      var availH = sideW ? Math.max(160, vh - 10) : Math.max(160, vh - topH - botH - 10);
-      var scale = Math.min(availW / W, availH / H);
+      var scale = Math.min(vw / W, vh / H);
       view.w = vw; view.h = vh; view.scale = scale;
-      view.ox = (availW - W * scale) / 2;
-      view.oy = sideW ? (vh - H * scale) / 2 : topH + 5 + (availH - H * scale) / 2;
-      /* Floating elements hug the bars so they never cover the board. */
-      toastEl.style.top = (sideW ? 10 : topH + 8) + 'px';
-      hintEl.style.bottom = (sideW ? 10 : botH + 10) + 'px';
-      missionsSheetEl.style.bottom = (botH + 8) + 'px';
+      view.ox = (vw - W * scale) / 2;
+      view.oy = (vh - H * scale) / 2;
     }
     window.addEventListener('resize', fitStage);
-    if (window.ResizeObserver){
-      new ResizeObserver(fitStage).observe(hudEl);
-      new ResizeObserver(fitStage).observe(panelEl);
-    }
     window.addEventListener('orientationchange', function(){ setTimeout(fitStage, 60); setTimeout(fitStage, 320); });
     document.addEventListener('fullscreenchange', function(){ setTimeout(fitStage, 60); });
     /* The page must never scroll: block touch-move everywhere except
@@ -500,7 +526,7 @@
       return {
         state:'title',           // title | play | over | clear
         paused:false,
-        coins:260, life:10, score:0, best:loadBest(),
+        coins:300, life:10, score:0, best:loadBest(),
         wave:0,                  // 現在/最後に開始したウェーブ
         cleared:0,               // クリア済みウェーブ数
         waveActive:false, spawnQueue:[], spawnTimer:0, waveDamage:false,
