@@ -18,3 +18,4 @@
 - スターシューター：「RailJet」by Deceased Superior Technician (DST) — CC-BY 3.0 — https://opengameart.org/content/railjet-long-seamless-loop / http://www.nosoapradio.us
 - バランスタワー：「Chill lofi inspired [loop edit]」by omfgdude, loop edit by qubodup — CC0 — https://opengameart.org/content/chill-lofi-inspired-loop-edit
 - タイミング斬り：「Taiko drums (seamless loop)」by jobro — CC-BY 3.0 — https://opengameart.org/content/taiko-drums-seamless-loop
+- まもりの塔：「Tower Defense Theme」by Deceased Superior Technician (DST) — CC0 — https://opengameart.org/content/tower-defense-theme

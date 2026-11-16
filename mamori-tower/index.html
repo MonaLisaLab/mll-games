@@ -346,6 +346,16 @@
         delay.connect(wet); wet.connect(AC.destination);
       } catch(e){ AC = null; }
     }
+    /* ---------- BGM（フリー音源ファイル bgm.ogg をループ再生） ----------
+       「Tower Defense Theme」by DST (Deceased Superior Technician) — CC0
+       https://opengameart.org/content/tower-defense-theme */
+    var bgmEl = null;
+    function bgmStart(){
+      if (muted) return;
+      if (!bgmEl){ bgmEl = new Audio("bgm.ogg"); bgmEl.loop = true; bgmEl.volume = 0.5; bgmEl.preload = "auto"; }
+      if (bgmEl.paused){ var p = bgmEl.play(); if (p && p.catch) p.catch(function(){}); }
+    }
+    function bgmStop(){ if (bgmEl && !bgmEl.paused) bgmEl.pause(); }
     function tone(freq, dur, type, vol, slideTo, delaySec){
       if (!AC || muted) return;
       var t0 = AC.currentTime + (delaySec || 0);
@@ -534,6 +544,7 @@
       if (G.cleared === 5) { toast('⚡ 雷塔が解放された！', 3000); SFX.unlock(); }
       if (G.cleared >= 15){
         G.state = 'clear';
+        bgmStop();
         SFX.fanfare();
         showEnd(true);
       } else {
@@ -546,6 +557,7 @@
     }
     function gameOver(){
       G.state = 'over';
+      bgmStop();
       G.shake = 14; G.flash = 0.5;
       SFX.hurt();
       if (G.score > G.best){ G.best = G.score; saveBest(); }
@@ -1328,11 +1340,14 @@
     muteBtn.addEventListener('click', function(){
       muted = !muted;
       muteBtn.textContent = muted ? '🔇' : '🔊';
+      if (muted) bgmStop();
+      else if (G.state === 'play' && !G.paused) bgmStart();
     });
     var pauseBtn = document.getElementById('pauseBtn');
     function setPaused(p){
       if (G.state !== 'play') return;
       G.paused = p;
+      if (p) bgmStop(); else bgmStart();
       document.getElementById('pauseOverlay').hidden = !p;
       pauseBtn.textContent = p ? '▶' : '⏸';
       refreshUI();
@@ -1357,6 +1372,7 @@
       G.started = true;
       document.getElementById('titleOverlay').hidden = true;
       refreshUI();
+      bgmStart();
       /* ウェーブ1はすぐ開始 */
       setTimeout(function(){ if (G.state === 'play' && !G.waveActive) startWave(); }, 500);
     }
@@ -1418,5 +1434,6 @@
     refreshUI();
     requestAnimationFrame(loop);
     </script>
+  <div style="text-align:center;font-size:11px;opacity:.55;padding:10px 0">BGM: 「Tower Defense Theme」 by DST (Deceased Superior Technician), CC0 (OpenGameArt)</div>
   </body>
 </html>
