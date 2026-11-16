@@ -22,18 +22,27 @@
           --card:#efe8d0;
         }
       }
-      html,body{ margin:0; padding:0; }
+      html,body{ margin:0; padding:0; height:100%; overscroll-behavior:none; }
       body{
-        background:var(--bg); color:var(--ink);
+        background:var(--bg); color:var(--ink); overflow:hidden;
         font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic UI",system-ui,sans-serif;
         -webkit-tap-highlight-color:transparent;
       }
       button, [role="button"], a.btn { min-height:2.25rem; }
-      #app{ max-width:480px; margin:0 auto; padding:8px 8px 20px; }
+      /* Full-viewport game shell (same approach as Snake DX): the shell
+         itself covers the entire device viewport and does NOT depend on
+         the native Fullscreen API. The page never scrolls; the board,
+         HUD and panels are all fitted inside the shell. */
+      #app{
+        position:fixed; inset:0; height:100vh; height:100dvh; z-index:1;
+        display:flex; flex-direction:column; overflow:hidden; gap:6px;
+        background:linear-gradient(180deg,var(--bg),var(--bg2));
+        padding:calc(6px + env(safe-area-inset-top)) calc(8px + env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
+      }
       /* ---------- HUD ---------- */
       #hud{
         background:var(--panel); border:1px solid var(--line); border-radius:10px;
-        padding:8px 10px; margin-bottom:8px;
+        padding:8px 10px; flex:none;
       }
       #hud .row{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
       #hud .row + .row{ margin-top:6px; }
@@ -59,9 +68,10 @@
       #nextReward{ font-size:12.5px; color:var(--accent); font-weight:700; }
       #waveInfo{ font-size:12.5px; color:var(--ink-dim); font-weight:600; }
       /* ---------- Stage ---------- */
-      #stageWrap{ position:relative; width:100%; max-width:448px; margin:0 auto; }
+      #stageWrap{ flex:1 1 auto; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; }
+      #boardBox{ position:relative; flex:none; }
       canvas{
-        display:block; width:100%; height:auto; border-radius:10px;
+        display:block; width:100%; height:100%; border-radius:10px;
         border:1px solid var(--line); touch-action:none; background:#79a84b;
       }
       #hint{
@@ -105,7 +115,7 @@
       /* ---------- Control panel ---------- */
       #panel{
         background:var(--panel); border:1px solid var(--line); border-radius:10px;
-        padding:10px; margin-top:8px; min-height:118px;
+        padding:10px; min-height:118px; flex:none;
       }
       #panel .ptitle{ font-size:13px; font-weight:800; color:var(--ink-dim); margin-bottom:8px; }
       #towerCards{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
@@ -129,6 +139,7 @@
       #towerInfo{
         margin-top:8px; background:var(--panel2); border:1px solid var(--line);
         border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.65;
+        max-height:24dvh; overflow-y:auto;
       }
       #buildBtn{ flex:1; font-size:16px; }
       #panelMsg{ font-size:13px; line-height:1.6; }
@@ -136,10 +147,15 @@
       .actrow .hbtn{ flex:1; }
       .lvstars{ color:var(--accent); letter-spacing:2px; font-size:14px; }
       /* ---------- Missions ---------- */
+      /* Missions live in a toggleable sheet over the shell (opened with
+         the 🏅 button) so the board keeps the full viewport height. */
       #missions{
+        position:absolute; left:8px; right:8px; bottom:calc(8px + env(safe-area-inset-bottom));
+        z-index:40; max-height:64dvh; overflow-y:auto; display:none;
         background:var(--panel); border:1px solid var(--line); border-radius:10px;
-        padding:10px; margin-top:8px;
+        padding:10px; box-shadow:0 14px 34px rgba(0,0,0,.45);
       }
+      #missions.open{ display:block; }
       #missions h3{ margin:0 0 6px; font-size:13px; color:var(--ink-dim); letter-spacing:.05em; }
       #missions ul{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; }
       #missions li{ font-size:12.5px; padding:3px 0; color:var(--ink-dim); display:flex; gap:6px; align-items:baseline; }
@@ -147,10 +163,36 @@
       #missions li.done{ color:var(--ink); }
       #missions li.done .mk{ color:var(--accent2); }
       #missions li .prog{ margin-left:auto; font-weight:700; font-size:11.5px; flex:none; }
-      #helpLine{ font-size:11.5px; color:var(--ink-dim); text-align:center; margin-top:10px; line-height:1.6; }
+      #helpLine{ display:none; font-size:11.5px; color:var(--ink-dim); text-align:center; margin:0; line-height:1.6; }
       @media (max-width:380px){
         #missions ul{ grid-template-columns:1fr; }
         .tcard .tdesc{ display:none; }
+      }
+      /* Short screens: compress the HUD/panel so the board keeps room. */
+      @media (max-height:700px){
+        #panel{ max-height:54dvh; overflow-y:auto; }
+      }
+      @media (max-height:560px){
+        #hud .row + .row{ margin-top:4px; }
+        .stat{ min-height:28px; font-size:13px; }
+        .tcard .tdesc{ display:none; }
+        #towerInfo{ max-height:18dvh; }
+      }
+      /* Landscape / wide: board fills the left side at full height;
+         HUD + build panel + help stack in a right-hand column. */
+      @media (orientation:landscape) and (min-width:600px){
+        #app{
+          display:grid; grid-template-columns:minmax(0,1fr) 360px;
+          grid-template-rows:auto minmax(0,1fr) auto; column-gap:10px;
+        }
+        #hud{ grid-column:2; grid-row:1; }
+        #stageWrap{ grid-column:1; grid-row:1 / -1; }
+        #panel{ grid-column:2; grid-row:2; overflow-y:auto; max-height:none; }
+        #missions{ left:auto; width:352px; }
+        #towerInfo{ max-height:none; }
+      }
+      @media (orientation:landscape) and (min-width:600px) and (min-height:561px){
+        #helpLine{ grid-column:2; grid-row:3; display:block; }
       }
     </style>
   </head>
@@ -170,6 +212,7 @@
           <button class="hbtn" id="speedBtn" title="速度切替">×1</button>
           <button class="hbtn" id="pauseBtn" title="ポーズ">⏸</button>
           <button class="hbtn" id="muteBtn" title="ミュート">🔊</button>
+          <button class="hbtn" id="missionBtn" title="ミッション">🏅</button>
           <span class="spacer"></span>
           <a class="hbtn" href="../index.html" title="トップページへ戻る">🏠 トップ</a>
         </div>
@@ -182,6 +225,7 @@
 
       <!-- Stage -->
       <div id="stageWrap">
+       <div id="boardBox">
         <canvas id="game" width="448" height="704"></canvas>
         <div id="toast"></div>
         <div id="hint" hidden></div>
@@ -209,6 +253,7 @@
           <p class="score-line" id="endScore"></p>
           <button class="big-btn" id="restartBtn2">↻ いますぐリスタート</button>
         </div>
+       </div>
       </div>
 
       <!-- Control panel -->
@@ -239,6 +284,7 @@
       <div id="missions">
         <h3>🏅 ミッション</h3>
         <ul id="missionList"></ul>
+        <div style="text-align:center;font-size:11px;opacity:.55;padding:8px 0 2px">BGM: 「Tower Defense Theme」 by DST (Deceased Superior Technician), CC0 (OpenGameArt)</div>
       </div>
 
       <p id="helpLine">操作：マスをタップ／クリックで選択（キーボードは矢印キーでマス移動）｜ キー 1〜4 タワー選択・Enter 建設 ｜ U 強化 ｜ X 売却 ｜ Space ウェーブ開始 ｜ P ポーズ ｜ Esc 選択解除</p>
@@ -250,11 +296,31 @@
     var COLS = 7, ROWS = 11, CELL = 64, W = COLS * CELL, H = ROWS * CELL;
     var canvas = document.getElementById('game');
     var ctx = canvas.getContext('2d');
-    (function fitDPR(){
+    var boardBox = document.getElementById('boardBox');
+    var stageWrapEl = document.getElementById('stageWrap');
+    /* Fit the board into whatever space the full-viewport shell leaves
+       (the Snake DX approach): the board keeps its 448x704 logical size
+       and is scaled to fit the stage area without scrolling, and the
+       canvas backing store matches the real on-screen pixels so the
+       picture stays sharp at any display size. */
+    function fitStage(){
+      var availW = stageWrapEl.clientWidth, availH = stageWrapEl.clientHeight;
+      if (!availW || !availH) return;
+      var scale = Math.min(availW / W, availH / H);
+      var cssW = Math.max(1, Math.floor(W * scale)), cssH = Math.max(1, Math.floor(H * scale));
+      boardBox.style.width = cssW + 'px';
+      boardBox.style.height = cssH + 'px';
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = W * dpr; canvas.height = H * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    })();
+      var bw = Math.round(cssW * dpr), bh = Math.round(cssH * dpr);
+      if (canvas.width !== bw || canvas.height !== bh){ canvas.width = bw; canvas.height = bh; }
+      ctx.setTransform(bw / W, 0, 0, bh / H, 0, 0);
+    }
+    window.addEventListener('resize', fitStage);
+    if (window.ResizeObserver) new ResizeObserver(fitStage).observe(stageWrapEl);
+    window.addEventListener('orientationchange', function(){ setTimeout(fitStage, 60); setTimeout(fitStage, 320); });
+    document.addEventListener('fullscreenchange', function(){ setTimeout(fitStage, 60); });
+    fitStage();
+    setTimeout(fitStage, 60); setTimeout(fitStage, 320);
 
     /* 道：セル座標の折れ点 */
     var PATH_CELLS = [[3,-1],[3,2],[1,2],[1,5],[5,5],[5,8],[3,8],[3,11]];
@@ -1448,6 +1514,10 @@
       refreshUI();
     }
     pauseBtn.addEventListener('click', function(){ setPaused(!G.paused); });
+    var missionsEl = document.getElementById('missions');
+    document.getElementById('missionBtn').addEventListener('click', function(){
+      missionsEl.classList.toggle('open');
+    });
     document.getElementById('resumeBtn').addEventListener('click', function(){ setPaused(false); });
     function restart(){
       var best = G.best;
@@ -1478,6 +1548,7 @@
       if (de.requestFullscreen) de.requestFullscreen().catch(function(){});
       else if (de.webkitRequestFullscreen) de.webkitRequestFullscreen();
       beginPlay();
+      setTimeout(fitStage, 80);
     });
     document.addEventListener('keydown', function(ev){
       if (G.state !== 'play') return;
@@ -1529,6 +1600,5 @@
     refreshUI();
     requestAnimationFrame(loop);
     </script>
-  <div style="text-align:center;font-size:11px;opacity:.55;padding:10px 0">BGM: 「Tower Defense Theme」 by DST (Deceased Superior Technician), CC0 (OpenGameArt)</div>
   </body>
 </html>
