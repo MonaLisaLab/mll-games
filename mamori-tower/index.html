@@ -242,7 +242,6 @@
           <span class="chip">W<span id="stWave">– / 15</span></span>
           <span class="chip">⭐<span id="stScore">0</span></span>
           <span class="spacer"></span>
-          <a class="ibtn" href="../index.html" title="トップページへ戻る">🏠</a>
         </div>
         <div class="hrow">
           <button class="pillbtn primary" id="waveBtn">▶ ウェーブ開始</button>
@@ -279,6 +278,7 @@
           <h2>⏸ ポーズ中</h2>
           <button class="big-btn" id="resumeBtn">▶ つづける</button>
           <button class="sub-btn" id="restartBtn1">↻ はじめから</button>
+          <a class="sub-btn" href="../index.html" style="text-decoration:none">🏠 ホームへ戻る</a>
         </div>
 
         <div class="overlay" id="endOverlay" hidden>
@@ -286,6 +286,7 @@
           <p id="endText"></p>
           <p class="score-line" id="endScore"></p>
           <button class="big-btn" id="restartBtn2">↻ いますぐリスタート</button>
+          <a class="sub-btn" href="../index.html" style="text-decoration:none">🏠 ホームへ戻る</a>
         </div>
 
       <!-- Control panel -->
@@ -401,6 +402,12 @@
       });
     })();
     function isPath(c, r){ return !!pathSet[c + ',' + r]; }
+    /* 設置ルール：タワーは道マスに上下左右で接しているマスにだけ建てられる
+       （道から離れたマスは魔物に攻撃されず一方的に撃ててしまうため） */
+    function canBuild(c, r){
+      if (isPath(c, r)) return false;
+      return isPath(c - 1, r) || isPath(c + 1, r) || isPath(c, r - 1) || isPath(c, r + 1);
+    }
 
     /* ================= タワー・敵データ ================= */
     var TOWERS = {
@@ -1077,7 +1084,7 @@
       /* 配置可能マスの淡いドット */
       var pulse = 0.5 + Math.sin(G.time * 2.4) * 0.5;
       for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++){
-        if (isPath(c, r) || towerAt(c, r)) continue;
+        if (!canBuild(c, r) || towerAt(c, r)) continue;
         ctx.fillStyle = 'rgba(255,255,255,' + (0.10 + pulse * 0.08) + ')';
         ctx.beginPath(); ctx.arc(c * CELL + CELL/2, r * CELL + CELL/2, 5, 0, 7); ctx.fill();
       }
@@ -1491,6 +1498,10 @@
           el.upBtn.disabled = G.coins < cost;
         }
         el.sellBtn.textContent = '💰 売却 +' + sellVal;
+      } else if (G.sel && !canBuild(G.sel.c, G.sel.r)){
+        el.buildUI.hidden = true; el.towerUI.hidden = true; el.idleMsg.hidden = false;
+        el.panelTitle.textContent = 'このマスには建てられません';
+        el.panelMsg2.innerHTML = 'タワーは<b>道に面したマス</b>にだけ建てられます。道のそばのマスを選んでください。';
       } else if (G.sel){
         el.towerUI.hidden = true; el.idleMsg.hidden = true; el.buildUI.hidden = false;
         el.panelTitle.textContent = '建てるタワーを選んで「建てる」';
@@ -1502,16 +1513,18 @@
         el.panelTitle.textContent = 'マスをタップしてタワーを建てよう';
         el.panelMsg2.innerHTML = G.waveActive
           ? '戦闘中！ タワーをタップすると強化・売却ができます。'
-          : '道以外のマスをタップすると、タワーを建てられます。<br>今建てるか、貯めて強いタワーに備えるか…駆け引きが大事！';
+          : '道に面したマスをタップすると、タワーを建てられます。<br>今建てるか、貯めて強いタワーに備えるか…駆け引きが大事！';
       }
     }
     function selectCell(c, r){
       if (isPath(c, r)){ G.sel = null; SFX.error(); toast('道の上には建てられません', 1200); }
+      else if (!towerAt(c, r) && !canBuild(c, r)){ G.sel = null; SFX.error(); toast('道に面したマスにだけ建てられます', 1600); }
       else G.sel = { c:c, r:r };
       refreshUI();
     }
     function buildTower(){
       if (!G.sel) return;
+      if (!canBuild(G.sel.c, G.sel.r)){ SFX.error(); toast('道に面したマスにだけ建てられます', 1600); return; }
       var type = G.previewType, d = TOWERS[type];
       if (towerLocked(type) || G.coins < d.cost){ SFX.error(); return; }
       if (towerAt(G.sel.c, G.sel.r)) return;
