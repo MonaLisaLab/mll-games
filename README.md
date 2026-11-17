@@ -9,6 +9,7 @@
 - [バランスタワー](baransutawa/index.html) — 物理演算の積み上げゲーム。クレーンからブロックを落としてタワーを高く積み上げる。はみ出すほどタワーが傾いて崩れやすく、風・ライフ3・5段ごとのボーナスブロックで難易度が変化。パーフェクトのコンボ、ヒットストップや画面振動などの手応え演出、5・10・20・30段でのテーマ解放、ベストスコア保存、S〜Cランク評価つき。
 - [タイミング斬り](timing-zan/index.html) — スワイプ斬撃アクション。画面下から放物線で放り投げられる果物をスワイプで真っ二つに斬る。両半分が飛び散り果汁が飛ぶ演出、ヒットストップ・スローモーション・画面振動。同時斬りボーナス（1スワイプ3個以上）、コンボ、FEVER（スコア2倍）、金の果物150点、落下でライフ減、斬ると爆発する爆弾、WAVE制の難易度、累計スコアで刀5種を解放・切替、ミッション9種、ベストスコア保存つき。
 - [まもりの塔](mamori-tower/index.html) — タワーディフェンス。うねる道を進む敵から城を守る。弓塔・砲塔・氷塔・雷塔の4種タワー（各Lv3まで強化・売却可）、スライム・コウモリ・ゴーレム・ボスの4種の敵、全15ウェーブ（5・10・15がボスウェーブ）。ゴール直前撃破のボーナスコイン、ミッション6種、ウェーブ3・5でのタワー解放、ヒットストップ・画面振動・効果音、ベストスコア保存つき。
+- [ニトロラッシュ](nitro-rush/index.html) — レース／3レーンドッジ。3レーンのハイウェイを駆け抜け、一般車・高速車・トラック・バリアを避けてコインを集める。ニトロ加速でスコア倍率×2、ギリギリすり抜けのニアミスでコンボボーナス。500mごとのレベルアップ（5の倍数はラッシュ）、ライフ3、ミッション6種、累計距離でマシン4種を解放、ベストスコア・ベスト距離保存つき。
 
 ## BGMクレジット
 
@@ -19,3 +20,4 @@
 - バランスタワー：「Chill lofi inspired [loop edit]」by omfgdude, loop edit by qubodup — CC0 — https://opengameart.org/content/chill-lofi-inspired-loop-edit
 - タイミング斬り：「Taiko drums (seamless loop)」by jobro — CC-BY 3.0 — https://opengameart.org/content/taiko-drums-seamless-loop
 - まもりの塔：「Tower Defense Theme」by Deceased Superior Technician (DST) — CC0 — https://opengameart.org/content/tower-defense-theme
+- ニトロラッシュ：「8-bit - Last Mission」by HydroGene — CC0 — https://opengameart.org/content/8-bit-last-mission
