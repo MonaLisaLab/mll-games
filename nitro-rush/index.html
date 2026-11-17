@@ -53,6 +53,12 @@
         opacity: 0; transition: opacity .25s;
       }
       #chipNitroHint.on { opacity: 1; }
+      #chipPolice {
+        top: calc(140px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+        font-size: 13px; color: #ffb3b3; border-color: rgba(255,90,90,.65);
+        background: rgba(60,6,10,.66); opacity: 0; transition: opacity .2s;
+      }
+      #chipPolice.on { opacity: 1; }
       #nitroWrap {
         position: absolute; left: 50%; transform: translateX(-50%);
         bottom: calc(46px + env(safe-area-inset-bottom)); width: min(46vw, 260px);
@@ -203,6 +209,7 @@
         <div class="chip" id="chipCombo"><span id="uiCombo">コンボ ×2</span></div>
         <div class="chip" id="chipNext"><span id="uiNext">次のマシンまであと1000m</span></div>
         <div class="chip" id="chipNitroHint">ニトロ発動OK！長押しで<b>加速＆スコア×2</b></div>
+        <div class="chip" id="chipPolice">🚓 パトカー接近中！</div>
         <div id="nitroWrap">
           <div id="nitroBar"><div id="nitroFill"></div></div>
           <div class="lbl">NITRO</div>
@@ -223,7 +230,7 @@
       <div class="overlay" id="ovTitle">
         <h1 class="gameTitle">ニトロ<span class="accent">ラッシュ</span></h1>
         <p class="tagline">一人称で駆け抜けろ！ニトロで爆走！</p>
-        <p class="subline">ドラッグ／←→でステアリング。交通車両をギリギリすり抜ける「ニアミス」でニトロゲージが溜まる。<br>ニトロ中は<b>大幅加速＋スコア×2＋ニアミスボーナス2倍</b>。ここぞで踏み込め！</p>
+        <p class="subline">スワイプ／←→で車線変更。交通車両をギリギリすり抜ける「ニアミス」でニトロゲージが溜まる。<br>ニトロ中は<b>大幅加速＋スコア×2＋ニアミスボーナス2倍</b>。ジャンプ台トラックはニトロで飛び越えろ！<br>落ちた貨物は当たると即死。パトカーの前でニトロを使うと追いかけられるぞ。</p>
         <div class="carSelect" id="carSelect"></div>
         <button class="bigBtn" id="btnStart" type="button">▶ スタート</button>
         <p class="bestLine" id="titleBest"></p>
@@ -234,7 +241,7 @@
       <div class="overlay" id="ovPause" hidden>
         <div class="panel" style="text-align:center">
           <h2>ポーズ中</h2>
-          <p class="subline" style="margin-top:8px">ドラッグ／←→キーでステアリング<br>ニトロ長押しで加速（スコア×2）／ブレーキ長押しで減速</p>
+          <p class="subline" style="margin-top:8px">スワイプ／←→キーで車線変更<br>ニトロ長押しで加速（スコア×2）／ブレーキ長押しで減速</p>
           <div class="panelBtns">
             <button class="bigBtn" id="btnResume" type="button">▶ 再開</button>
             <button class="ghostBtn" id="btnQuit" type="button">タイトルへ</button>
@@ -358,6 +365,8 @@
       click()  { tone(740, 0.05, 'square', 0.1); },
       go()     { tone(880, 0.16, 'square', 0.18, 1320); },
       nitro()  { noiseBurst(0.35, 0.22, 2400); tone(220, 0.35, 'sawtooth', 0.12, 660); },
+      drop()   { noiseBurst(0.18, 0.3, 500); tone(95, 0.18, 'sine', 0.3, 45); },
+      jump()   { noiseBurst(0.3, 0.18, 2800); tone(280, 0.32, 'sawtooth', 0.1, 920); },
     };
     function bgmPlay() { if (!save.muted) { bgm.play().catch(() => {}); } }
     function bgmStop() { bgm.pause(); }
@@ -391,8 +400,9 @@
        反応マージン（約0.12秒）＋車両前後長（660）を確保できる距離。 */
     const ROW_GAP_MIN = Math.max(5900, WORST_CLOSING * 0.47);  // ≒ 5922
     const FOLLOW_RANGE = 6800;        // 車間制御が働き始める前方距離
-    const FOLLOW_FLOOR = 5900;        // 他車へこれ以上近づけない距離
+    const FOLLOW_FLOOR = 5900;        // （旧方式の名残り。現行の車間制御は速度キャップのみ）
     const CAR_W_WORLD = 920, CAR_H_WORLD = 520, TRUCK_H_WORLD = 1020;
+    const POLICE_PAL = { body: '#e9edf3', dark: '#14171c', glass: '#a9c6da' };
 
     /* ---------- カーブパターン ---------- */
     const SEG_CURVE = new Array(TRACK_SEGS).fill(0);
@@ -445,8 +455,11 @@
     let combo = 0, comboT = 0, gauge = 0, nitroOn = false;
     let runNear = 0, runCoins = 0, runTime = 0, nitroTimeRun = 0, distSinceDmg = 0;
     let invincible = 0, shake = 0, flashRed = 0, gameTime = 0, skyOff = 0;
-    let cars = [], coinsArr = [], nextRowZ = 0;
-    let steerVis = 0, dragTargetX = null, dragId = null, dragStartX = 0, dragStartPX = 0;
+    let cars = [], coinsArr = [], crates = [], nextRowZ = 0, rowSeq = 0;
+    let playerLane = 1, laneCd = 0;
+    let police = null, sirenT = 0, sirenHigh = false;
+    let airT = 0, airDur = 1, lastRampZ = -1e9;
+    let steerVis = 0, dragId = null, dragStartX = 0;
     let nitroBtnHeld = false, brakeBtnHeld = false;
     const keys = { left: false, right: false, nitro: false, brake: false };
     let dying = false, overTimer = -1;
@@ -457,6 +470,21 @@
 
     function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
     function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+    function nearestLane(x) {
+      let bi = 0, bd = Infinity;
+      LANES_X.forEach((lx, i) => { const d = Math.abs(lx - x); if (d < bd) { bd = d; bi = i; } });
+      return bi;
+    }
+    /* 車線変更はスワイプ／キーだけ。1車線ずつ、移動後は車線中央に追従する */
+    function shiftLane(dir) {
+      if (state !== 'play' || dying) return;
+      if (laneCd > 0) return;
+      const nl = clamp(playerLane + dir, 0, 2);
+      if (nl === playerLane) return;
+      playerLane = nl;
+      laneCd = 0.13;
+      steerVis = dir * 0.85;
+    }
     function carTopUnits() { return MAX_SPEED * (curCar().topKmh / 245); }
     function kmh() { return Math.round(speed / MAX_SPEED * 245); }
 
@@ -466,9 +494,10 @@
           行内の車は全車同速（spawnRow）→ 行が崩れて別の壁ができることもない。
        2) 行間隔は ROW_GAP_MIN 以上（rowGap）→ 最悪の相対速度でも
           次の行までに横移動しきれる。
-       3) 車間制御（updateTraffic）：前方 FOLLOW_RANGE 以内の他車より
-          速くならず、FOLLOW_FLOOR 以上に近づけない。速い行が遅い行に
-          追いついても横並びの壁にはならず、行同士の間隔も保たれる。
+       3) 車間制御（updateTraffic）：前方 FOLLOW_RANGE 以内では直前車両の
+          実速度を超えない → 行同士の間隔はスポーン時の ROW_GAP_MIN 級から
+          縮まらない。煽り運転の車線変更・ブレーキや、落ちた貨物・巡回
+          パトカーもすべて「行の1車線」を使うため、この保証は崩れない。
        ============================================================ */
     function planRowLanes() {
       const lanes = [0, 1, 2];
@@ -480,21 +509,41 @@
       const count = (Math.random() < twoProb) ? 2 : 1;
       return lanes.slice(0, count); // 必ず3車線中2車線以下
     }
-    function rowGap() { return ROW_GAP_MIN * (1 + Math.random() * 0.25); }
+    function rowGap() { return ROW_GAP_MIN * (1.08 + Math.random() * 0.25); }
     function trafficSpeed() {
       return Math.min(5400, TRAFFIC_MIN + Math.random() * (TRAFFIC_MAX - TRAFFIC_MIN) + (level - 1) * 50);
     }
     function spawnRow(z) {
       const laneIdx = planRowLanes();
+      const rowId = ++rowSeq;
       const trucks = laneIdx.map(() => Math.random() < 0.16);
       // 行内は全車同速にする（行が崩れて新たな壁ができないように）
       const rowSpeed = trucks.some(Boolean) ? TRAFFIC_MIN + Math.random() * 900 : trafficSpeed();
+      // 巡回パトカーは最大1台まで。行の1車線を通常車両として使うので保証は崩れない
+      let policeIdx = -1;
+      if (level >= 2 && !police && !cars.some(c => c.police) && Math.random() < 0.08) {
+        const cand = laneIdx.map((li, i) => i).filter(i => !trucks[i]);
+        if (cand.length) policeIdx = cand[Math.floor(Math.random() * cand.length)];
+      }
       laneIdx.forEach((li, i) => {
+        const isPolice = i === policeIdx;
+        let kind = 'normal';
+        if (trucks[i]) {
+          if (z - lastRampZ > 18000 && dist > 600 && Math.random() < 0.16) { kind = 'ramp'; lastRampZ = z; }
+          else if (Math.random() < 0.38) kind = 'cargo';
+        }
         cars.push({
-          z, offset: LANES_X[li], lane: li,
+          z, offset: LANES_X[li], lane: li, row: rowId,
           speed: rowSpeed, cruise: rowSpeed,
-          truck: trucks[i], pal: pick(TRAFFIC_PALS), passed: false, ghost: false,
+          truck: trucks[i], kind, police: isPolice,
+          pal: isPolice ? POLICE_PAL : pick(TRAFFIC_PALS),
+          passed: false, ghost: false,
           wob: Math.random() * Math.PI * 2,
+          // 煽り運転個体（セダンの一部だけ）。mode: idle|signal|change|brake
+          aggro: !trucks[i] && !isPolice && Math.random() < 0.20,
+          mode: 'idle', aggroT: 2.5 + Math.random() * 4, targetLane: li,
+          changeP: 0, changeFrom: LANES_X[li], brakeLit: false, blinkDir: 0,
+          dropT: 3 + Math.random() * 5, dropped: false, hinted: false, jumped: false,
         });
       });
       // コイン列は行と行のあいだに置く（進行を妨げない）
@@ -518,39 +567,223 @@
       }
       if (cars.length && cars[0].z < position - 1500) cars = cars.filter(c => c.z > position - 1500);
       if (coinsArr.length && coinsArr[0].z < position - 1500) coinsArr = coinsArr.filter(c => !c.taken && c.z > position - 1500);
+      if (crates.length && crates.some(c => c.z < position - 1500)) crates = crates.filter(c => c.z > position - 1500);
+    }
+    /* 車線変更の安全判定：変更先の車線が近距離で塞がれていないか。
+       行同士は車間制御で大きく離れているため、この窓（±2400）に見えるのは
+       実質自車の行の車両だけであり、行の占有車線が最大2のままに保たれる。 */
+    function laneBlockedFor(c, targetLane) {
+      for (const o of cars) {
+        if (o === c) continue;
+        if (Math.abs(o.z - c.z) < 2400) {
+          if (o.lane === targetLane) return true;
+          if (o.mode === 'change' && o.targetLane === targetLane) return true;
+          if (o.mode === 'signal' && o.targetLane === targetLane) return true;
+        }
+      }
+      for (const cr of crates) {
+        if (Math.abs(cr.z - c.z) < 1800 && cr.lane === targetLane) return true;
+      }
+      if (police && Math.abs(police.z - c.z) < 2400 && nearestLane(police.offset) === targetLane) return true;
+      return false;
+    }
+    /* 煽り運転：ウインカー予告→ゆっくり車線変更、またはブレーキ。
+       車線変更は自車の行の中で完結し、全車線封鎖は起きない（上記参照）。 */
+    function updateAggro(c, dt) {
+      c.brakeLit = c.mode === 'brake';
+      c.blinkDir = (c.mode === 'signal' || c.mode === 'change') ? Math.sign(c.targetLane - c.lane) : 0;
+      if (c.mode === 'change') {
+        c.changeP += dt / 1.1;
+        const p = Math.min(1, c.changeP);
+        const e = p * p * (3 - 2 * p);
+        c.offset = c.changeFrom + (LANES_X[c.targetLane] - c.changeFrom) * e;
+        if (p >= 1) {
+          c.lane = c.targetLane; c.offset = LANES_X[c.lane];
+          c.mode = 'idle'; c.aggroT = 3 + Math.random() * 4.5;
+        }
+        return;
+      }
+      if (!c.aggro) return;
+      c.aggroT -= dt;
+      if (c.mode === 'signal') {
+        if (c.aggroT <= 0) {
+          if (!laneBlockedFor(c, c.targetLane)) { c.mode = 'change'; c.changeP = 0; c.changeFrom = c.offset; }
+          else { c.mode = 'idle'; c.aggroT = 1.2 + Math.random() * 2; }
+        }
+        return;
+      }
+      if (c.mode === 'brake') {
+        // 後退しすぎると後方の障害物と重なって理不尽になるため、行からの遅れに上限を設ける
+        let rowFrontZ = c.z;
+        for (const o of cars) if (o.row === c.row && o.z > rowFrontZ) rowFrontZ = o.z;
+        if (c.aggroT <= 0 || rowFrontZ - c.z > 1200) { c.mode = 'idle'; c.aggroT = 2.5 + Math.random() * 4; }
+        return;
+      }
+      if (c.aggroT <= 0) {
+        const r = Math.random();
+        // 車線変更中は車体が2車線にまたがるため、行に相棒がいる車は変更しない
+        // （単独行の車だけなら、変更中でも空き車線が必ず1つ残る）。
+        const hasMate = cars.some(o => o !== c && o.row === c.row);
+        if (r < 0.52 && !hasMate) {
+          const dirs = [-1, 1].filter(d => c.lane + d >= 0 && c.lane + d <= 2 && !laneBlockedFor(c, c.lane + d));
+          if (dirs.length) { c.targetLane = c.lane + pick(dirs); c.mode = 'signal'; c.aggroT = 0.55; }
+          else c.aggroT = 1 + Math.random() * 2;
+        } else if (r < 0.82) {
+          c.mode = 'brake'; c.aggroT = 0.5 + Math.random() * 0.5;
+        } else {
+          c.aggroT = 1.5 + Math.random() * 3;
+        }
+      }
     }
     function updateTraffic(dt) {
-      for (const c of cars) c.z += c.speed * dt;
-      /* 車間制御：前方 FOLLOW_RANGE 以内では前車の有効速度を超えず、
-         FOLLOW_FLOOR 以上に近づけない。有効速度は毎フレーム cruise から
-         計算し直すので、先行車がいなくなれば元の速度に戻る。 */
+      for (const c of cars) updateAggro(c, dt);
+      /* 車間制御：前方から順に、zの「帯（レベル）」単位で実効速度を決める。
+         同じ帯の車両は一律に同じキャップを受ける（帯の先頭車だけが前帯に
+         キャップされると行が千切れてしまうため）。
+         - 直前の帯（別の行）との間隔が FOLLOW_RANGE 以内なら、その帯の
+           実速度を超えない → 行同士の間隔はスポーン時の ROW_GAP_MIN 級から
+           縮まらない。
+         - 直前の帯が同じ行の車両で間隔が開いている場合だけ、少し速く走って
+           行へ再合流してよい（ブレーキで遅れた車の復帰用）。 */
       const sorted = [...cars].sort((a, b) => b.z - a.z); // 前方から
-      let aheadZ = null, aheadEff = 0;   // 直前の（自グループより前方の）グループ
-      let curZ = null, curEff = Infinity; // 構築中の自グループ
+      let aheadZ = null, aheadSpeed = 0, aheadRow = -1;
+      let levelZ = null, levelRow = -1, levelMin = Infinity;
       for (const c of sorted) {
-        if (curZ === null || c.z < curZ - 5) {
-          if (curZ !== null) { aheadZ = curZ; aheadEff = curEff; }
-          curZ = c.z; curEff = Infinity;
+        if (levelZ === null || c.z < levelZ - 60) {
+          if (levelZ !== null) { aheadZ = levelZ; aheadSpeed = levelMin; aheadRow = levelRow; }
+          levelZ = c.z; levelRow = c.row; levelMin = Infinity;
         }
         let eff = c.cruise;
         if (aheadZ !== null) {
           const dz = aheadZ - c.z;
-          if (dz > 100 && dz <= FOLLOW_RANGE && eff > aheadEff) eff = aheadEff;
-          if (dz > 100 && dz < FOLLOW_FLOOR) c.z -= (FOLLOW_FLOOR - dz);
+          if (dz > 60 && dz <= FOLLOW_RANGE) {
+            const cap = aheadRow === c.row ? aheadSpeed + 650 : aheadSpeed;
+            if (eff > cap) eff = cap;
+          }
         }
+        if (c.mode === 'brake') eff *= 0.62;
         c.speed = eff;
-        if (eff < curEff) curEff = eff;
+        if (eff < levelMin) levelMin = eff;
       }
+      for (const c of cars) c.z += c.speed * dt;
+      /* 間隔の保証（構造で担保する）：
+         - 行メイト同士のz差は1300以内（ブレーキで千切れても行は一体に保つ）
+         - 異なる行の車同士は4200未満に近づかない
+         これにより、どの深度でも「1行（最大2車線）＋貨物1つ」を超える
+         障害物が重なることはなく、全車線封鎖は構造的に起きない。 */
+      const rowFront = new Map();
+      for (const c of cars) rowFront.set(c.row, Math.max(rowFront.get(c.row) ?? -Infinity, c.z));
+      for (const c of cars) { const f = rowFront.get(c.row); if (c.z < f - 1300) c.z = f - 1300; }
+      // 貨物は静止物なので、後続の行はいずれそのzに到達して重なってしまう。
+      // 貨物を「落としたトラックの行の一部」として間隔計算に含め、後続車が
+      // 貨物の4200以内に近づけないようにすることで、重なり自体を防ぐ。
+      const entries = cars.map(c => ({ c, z: c.z, row: c.row }));
+      for (const cr of crates) entries.push({ c: null, z: cr.z, row: cr.row });
+      entries.sort((a, b) => b.z - a.z);
+      for (let i = 1; i < entries.length; i++) {
+        const ahead = entries[i - 1], e = entries[i];
+        if (!e.c) continue; // 貨物は動かさない（後続車だけを下げる）
+        if (e.row !== ahead.row && e.z > ahead.z - 4200) { e.z = ahead.z - 4200; e.c.z = e.z; }
+      }
+      /* 貨物トラック：プレイヤーから十分先にいるときだけ貨物を落とす。
+         落下位置はトラックの2600後方。落下地点の前後に他行の車が
+         近い場合は、混雑が解けるまで落下を延期する。 */
+      if (state === 'play') {
+        for (const c of cars) {
+          if (c.kind !== 'cargo' || c.dropped) continue;
+          const relZ = c.z - position;
+          if (relZ < 30000) c.dropT -= dt;
+          if (c.dropT <= 0) {
+            if (relZ > 9500) {
+              const dropZ = c.z - 2600;
+              const blocked = cars.some(o => o.row !== c.row && o.z > dropZ - 2400 && o.z < dropZ + 900);
+              if (blocked) { c.dropT = 0.4; } // 混雑しているので延期
+              else {
+                c.dropped = true;
+                crates.push({ z: dropZ, offset: c.offset, lane: c.lane, born: gameTime, row: c.row });
+                if (relZ < 26000) { floater('⚠ 貨物落下！', '#ff9d5c', true); sfx.drop(); }
+              }
+            } else c.dropped = true; // 近すぎる場合は今回の落下を見送る
+          }
+        }
+      }
+      if (police) updatePolice(dt);
+    }
+    /* パトカー追跡：プレイヤーの真後ろに付け、車線を合わせて体当たりを狙う。
+       避けられると前方へ抜け、交通車にぶつかれば自滅する。 */
+    function updatePolice(dt) {
+      const planeZ = position + playerZ;
+      police.t += dt;
+      if (police.phase === 'chase') {
+        const dz = planeZ - police.z; // 正 = パトカーが後方
+        let target;
+        if (dz > 500) target = speed * 1.12 + 1000;       // 追いつく
+        else if (dz > -250) target = speed * 1.03 + 120; // バンパーに付ける
+        else target = speed * 0.84;                      // 抜けすぎたら落として戻る
+        if (dz < -3000) { // まだ遠く前方にいる間は、前車に追突しないよう速度を合わせる
+          for (const c of cars) {
+            const cz = c.z - police.z;
+            if (cz > 0 && cz < 1600 && Math.abs(c.offset - police.offset) < 0.4) { target = Math.min(target, c.speed); break; }
+          }
+        }
+        police.speed += clamp(target - police.speed, -15000 * dt, 5600 * dt);
+        let latTarget = dz < -3000 ? police.offset : playerX; // 遠方では車線を維持して待ち受ける
+        if (dz >= -3000 && dz < -200) { // 前に出てしまったら、前方の交通車の車線へ寄せる
+          for (const c of cars) {
+            const cz = c.z - police.z;
+            if (cz > 0 && cz < 2600) { latTarget = c.offset; break; }
+          }
+        }
+        police.offset += clamp(latTarget - police.offset, -1.7 * dt, 1.7 * dt);
+        sirenT += dt;
+        if (sirenT > 0.36) { sirenT = 0; sirenHigh = !sirenHigh; tone(sirenHigh ? 930 : 690, 0.34, 'triangle', 0.045); }
+        if (airT <= 0 && invincible <= 0 && !dying &&
+            Math.abs(police.z - planeZ) < 330 && Math.abs(police.offset - playerX) < COLLIDE_LAT) {
+          onPoliceHit();
+        }
+        if (police && police.t > 16) police.phase = 'leave';
+      } else { // leave：減速して後方へ消える
+        police.speed += (speed * 0.45 - police.speed) * Math.min(1, 2.2 * dt);
+      }
+      if (!police) return;
+      police.z += police.speed * dt;
+      if (police.phase === 'chase') {
+        for (const c of cars) {
+          if (c.row === police.srcRow) continue; // 変換元の行の車両は真横にいるだけなので対象外
+          if (Math.abs(c.z - police.z) < 470 && Math.abs(c.offset - police.offset) < 0.5) {
+            score += 200;
+            floater('パトカー自滅！ +200', '#7dffa8', true);
+            banner('パトカーがクラッシュ！', false);
+            sfx.crash(); shake = Math.max(shake, 6);
+            police = null;
+            return;
+          }
+        }
+      }
+      if (planeZ - police.z > 6000 || police.z - planeZ > 38000) police = null;
+    }
+    function onPoliceHit() {
+      lives--;
+      combo = 0; comboT = 0;
+      save.bestNoDmg = Math.max(save.bestNoDmg, Math.floor(distSinceDmg));
+      distSinceDmg = 0;
+      speed = carTopUnits() * 0.25;
+      invincible = 2.2; shake = 15; flashRed = 0.55;
+      sfx.crash(); persist();
+      police.phase = 'leave'; // 一旦離れるので連続ヒットはしない
+      if (lives <= 0) { dying = true; overTimer = 0.9; banner('クラッシュ！', true); }
+      else banner('🚓 パトカーにぶつかられた！ 残り' + lives, true);
     }
 
     /* ---------- Run control ---------- */
     function reset() {
-      position = 0; speed = 0; playerX = 0; dist = 0; score = 0; lives = 3; level = 1;
+      position = 0; speed = 0; playerX = 0; playerLane = 1; laneCd = 0; dist = 0; score = 0; lives = 3; level = 1;
       combo = 0; comboT = 0; gauge = curCar().nitroCap * 0.35; nitroOn = false;
       runNear = 0; runCoins = 0; runTime = 0; nitroTimeRun = 0; distSinceDmg = 0;
-      invincible = 0; shake = 0; flashRed = 0; cars = []; coinsArr = []; floaters.length = 0;
+      invincible = 0; shake = 0; flashRed = 0; cars = []; coinsArr = []; crates = []; floaters.length = 0;
+      police = null; sirenT = 0; airT = 0; lastRampZ = -1e9;
       dying = false; overTimer = -1; everNitro = false; fullShown = false;
-      dragTargetX = null; steerVis = 0;
+      steerVis = 0;
       nextRowZ = 6500;
       ensureTraffic();
     }
@@ -582,7 +815,7 @@
       state = 'play'; $('ovPause').hidden = true; audio(); bgmPlay();
     }
     function doGameOver() {
-      state = 'over'; bgmStop();
+      state = 'over'; bgmStop(); police = null;
       save.bestNoDmg = Math.max(save.bestNoDmg, Math.floor(distSinceDmg));
       const recScore = Math.floor(score) > save.bestScore;
       const recDist = Math.floor(dist) > save.bestDist;
@@ -690,26 +923,17 @@
       if (dying) target = 0;
       const rate = target > speed ? car.accel * (nitroOn ? 2.7 : 1.15) : 3.4;
       speed += (target - speed) * Math.min(1, rate * dt);
-      if (Math.abs(playerX) > 1.03 && !nitroOn && !dying) {
-        speed += (top * 0.45 - speed) * Math.min(1, 1.6 * dt); // 路肩の抵抗
-        shake = Math.max(shake, 2.5);
-      }
 
-      /* ステアリング：ドラッグは目標位置へ、キーは等速移動。横移動は速く（回避性能の要） */
-      const LAT = 4.4;
-      let visTarget = 0;
-      if (dragTargetX !== null) {
-        const dx = dragTargetX - playerX;
-        const stepMax = LAT * 1.5 * dt;
-        playerX += clamp(dx, -stepMax, stepMax);
-        visTarget = clamp(dx * 2.4, -1, 1);
-      } else {
-        const ks = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-        if (ks !== 0) { playerX += ks * LAT * dt; visTarget = ks; }
-      }
-      /* カーブの遠心力 */
-      playerX -= curveAt(position + playerZ) * (speed / MAX_SPEED) * dt * 0.38;
-      playerX = clamp(playerX, -1.12, 1.12);
+      /* ステアリング：車線ベース。スワイプ／キーで1車線ずつ移動し、
+         あとは車線中央へ追従するだけ。カーブや慣性で車線が変わることはなく、
+         横位置は常に車線の範囲内（道路からはみ出さない）。 */
+      if (laneCd > 0) laneCd -= dt;
+      const laneTargetX = LANES_X[playerLane];
+      const dxL = laneTargetX - playerX;
+      const stepMax = 6.2 * dt;
+      playerX += clamp(dxL, -stepMax, stepMax);
+      playerX = clamp(playerX, -0.72, 0.72);
+      const visTarget = clamp(dxL * 3.4, -1, 1);
       steerVis += (visTarget - steerVis) * Math.min(1, 14 * dt);
 
       /* 前進 */
@@ -733,8 +957,23 @@
       skyOff += speed * dt * curveAt(position) * 0.0016;
 
       if (invincible > 0) invincible -= dt;
+      if (airT > 0) {
+        airT -= dt;
+        if (airT <= 0) { airT = 0; invincible = Math.max(invincible, 0.6); shake = Math.max(shake, 3); }
+      }
       if (shake > 0) shake = Math.max(0, shake - 34 * dt);
       if (flashRed > 0) flashRed = Math.max(0, flashRed - 1.4 * dt);
+
+      /* パトカー：画面内に巡回中のパトカーがいる状態でニトロを使うと追跡開始 */
+      if (!police && nitroOn) {
+        const pc = cars.find(c => c.police && (c.z - position) > 0 && (c.z - position) < DRAW_DIST * SEG_LEN);
+        if (pc) {
+          cars.splice(cars.indexOf(pc), 1);
+          police = { z: pc.z, offset: pc.offset, speed: pc.speed, t: 0, phase: 'chase', srcRow: pc.row,
+                     truck: false, kind: 'police', police: true, pal: POLICE_PAL, passed: true, ghost: false };
+          banner('🚓 パトカーだ！逃げ切れ！', true);
+        }
+      }
 
       updateTraffic(dt);
       ensureTraffic();
@@ -743,15 +982,45 @@
       const planeZ = position + playerZ;
       for (const c of cars) {
         const rel = c.z - planeZ;
+        if (c.kind === 'ramp' && !c.hinted && rel > 0 && rel < 17000) {
+          c.hinted = true;
+          floater('ジャンプ台トラック！ニトロで飛び越えろ', '#7ee7ff', true);
+        }
         if (!c.passed && rel < -340) {
           c.passed = true;
-          if (!c.ghost && invincible <= 0 && !dying) {
+          if (!c.ghost && invincible <= 0 && !dying && airT <= 0) {
             const lat = Math.abs(playerX - c.offset);
             if (lat >= COLLIDE_LAT && lat < NEAR_LAT) onNearMiss(c);
           }
         }
-        if (!dying && invincible <= 0 && !c.ghost && Math.abs(rel) < 330 && Math.abs(playerX - c.offset) < COLLIDE_LAT) onCrash(c);
+        /* ジャンプ台：ニトロ中に後ろから乗り上げると飛び越える */
+        if (c.kind === 'ramp' && !c.jumped && airT <= 0 && nitroOn && !dying &&
+            rel < 280 && rel > -520 && Math.abs(playerX - c.offset) < COLLIDE_LAT) {
+          c.jumped = true; c.ghost = true;
+          airT = airDur = 1.05;
+          score += 300;
+          floater('ジャンプ！ +300', '#7ee7ff', true);
+          sfx.jump();
+        }
+        if (airT <= 0 && !dying && invincible <= 0 && !c.ghost && Math.abs(rel) < 330 && Math.abs(playerX - c.offset) < COLLIDE_LAT) onCrash(c);
         if (invincible > 0 && Math.abs(rel) < 430 && Math.abs(playerX - c.offset) < COLLIDE_LAT) c.ghost = true;
+      }
+      /* 落ちた貨物：当たったら即死（無敵中でも。ジャンプ中は飛び越える） */
+      if (airT <= 0 && !dying) {
+        for (const cr of crates) {
+          const rel = cr.z - planeZ;
+          if (Math.abs(rel) < 330 && Math.abs(playerX - cr.offset) < COLLIDE_LAT) {
+            lives = 0;
+            combo = 0; comboT = 0;
+            save.bestNoDmg = Math.max(save.bestNoDmg, Math.floor(distSinceDmg));
+            distSinceDmg = 0;
+            shake = 20; flashRed = 0.7;
+            sfx.crash(); persist();
+            dying = true; overTimer = 1.0;
+            banner('💥 貨物に激突！', true);
+            break;
+          }
+        }
       }
       for (const cn of coinsArr) {
         if (cn.taken) continue;
@@ -933,6 +1202,22 @@
         if (!coinBuckets.has(n)) coinBuckets.set(n, []);
         coinBuckets.get(n).push(cn);
       }
+      const crateBuckets = new Map();
+      for (const cr of crates) {
+        const relZ = cr.z - position;
+        if (relZ < 40 || relZ > DRAW_DIST * SEG_LEN) continue;
+        const n = Math.floor(relZ / SEG_LEN);
+        if (!crateBuckets.has(n)) crateBuckets.set(n, []);
+        crateBuckets.get(n).push(cr);
+      }
+      if (police) {
+        const relZ = police.z - position;
+        if (relZ >= 40 && relZ <= DRAW_DIST * SEG_LEN) {
+          const n = Math.floor(relZ / SEG_LEN);
+          if (!carBuckets.has(n)) carBuckets.set(n, []);
+          carBuckets.get(n).push(police);
+        }
+      }
       const ghostBlink = invincible > 0 && (Math.floor(gameTime * 14) % 2 === 0);
       for (let n = DRAW_DIST - 1; n >= 0; n--) {
         const e = list[n];
@@ -943,6 +1228,9 @@
         // コイン
         const cb = coinBuckets.get(n);
         if (cb) for (const cn of cb) drawCoin(e, cn);
+        // 落ちた貨物
+        const rb = crateBuckets.get(n);
+        if (rb) for (const cr of rb) drawCrate(e, cr);
         // 交通車
         const kb = carBuckets.get(n);
         if (kb) {
@@ -1034,17 +1322,105 @@
       const w = CAR_W_WORLD * p.sc * (W / 2);
       const h = (c.truck ? TRUCK_H_WORLD : CAR_H_WORLD) * p.sc * (H / 2);
       if (w < 2) return;
-      drawCarRear(ctx, cx, p.gy, w, h, c.pal, c.truck);
+      drawCarRear(ctx, cx, p.gy, w, h, c.pal, c.truck, c.kind);
+      const x = cx - w / 2, y = p.gy - h;
+      /* ウインカー（車線変更の予告・実行中） */
+      if (c.blinkDir && Math.floor(gameTime * 6) % 2 === 0) {
+        ctx.fillStyle = '#ffb02e';
+        const bx = c.blinkDir < 0 ? x + w * 0.08 : x + w * 0.92;
+        ctx.beginPath(); ctx.arc(bx, y + h * 0.62, Math.max(1.2, w * 0.055), 0, 6.284); ctx.fill();
+      }
+      /* ブレーキランプ（煽り運転のブレーキ中は明るく点灯） */
+      if (c.brakeLit) {
+        ctx.fillStyle = 'rgba(255,60,50,.9)';
+        rr(ctx, x + w * 0.04, y + h * 0.545, w * 0.22, h * 0.10, w * 0.03); ctx.fill();
+        rr(ctx, x + w * 0.74, y + h * 0.545, w * 0.22, h * 0.10, w * 0.03); ctx.fill();
+      }
+      /* パトカーの赤青パトランプ（交互に点滅） */
+      if (c.police) {
+        const ph = Math.floor(gameTime * 6) % 2 === 0;
+        ctx.fillStyle = ph ? '#ff4040' : 'rgba(255,64,64,.25)';
+        rr(ctx, x + w * 0.17, y + h * 0.005, w * 0.29, h * 0.07, 2); ctx.fill();
+        ctx.fillStyle = ph ? 'rgba(48,96,255,.25)' : '#3060ff';
+        rr(ctx, x + w * 0.54, y + h * 0.005, w * 0.29, h * 0.07, 2); ctx.fill();
+      }
     }
-    /* 車両の後ろ姿（交通車・サムネイル共通） */
-    function drawCarRear(g, cx, gy, w, h, pal, truck) {
+    /* 落ちた貨物（木箱）：警告ストライプと点滅ライトで危険を明示する */
+    function drawCrate(e, cr) {
+      const relZ = cr.z - position;
+      const p = interp(e, relZ);
+      if (p.gy > H + 200 || p.gy < horizonY - 60) return;
+      const cx = p.cx + p.sc * cr.offset * ROAD_W * (W / 2);
+      const w = 760 * p.sc * (W / 2), h = 620 * p.sc * (H / 2);
+      if (w < 2.5) return;
+      const fall = clamp((gameTime - cr.born) / 0.38, 0, 1);
+      const dropY = (1 - fall) * (1 - fall) * -1500 * p.sc * (H / 2);
+      const x = cx - w / 2, y = p.gy - h + dropY;
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      ctx.beginPath(); ctx.ellipse(cx, p.gy, w * 0.52, Math.max(1, h * 0.07), 0, 0, 6.284); ctx.fill();
+      ctx.fillStyle = '#8a5a26'; rr(ctx, x, y, w, h, w * 0.03); ctx.fill();
+      ctx.fillStyle = '#a06a2e'; rr(ctx, x + w * 0.06, y + h * 0.06, w * 0.88, h * 0.88, w * 0.02); ctx.fill();
+      ctx.strokeStyle = '#5e3c14'; ctx.lineWidth = Math.max(1, w * 0.045);
+      ctx.strokeRect(x + w * 0.06, y + h * 0.06, w * 0.88, h * 0.88);
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.06, y + h * 0.06); ctx.lineTo(x + w * 0.94, y + h * 0.94);
+      ctx.moveTo(x + w * 0.94, y + h * 0.06); ctx.lineTo(x + w * 0.06, y + h * 0.94);
+      ctx.stroke();
+      ctx.fillStyle = '#ffb02e';
+      ctx.fillRect(x, y + h * 0.40, w, h * 0.16);
+      ctx.fillStyle = '#15161a';
+      for (let i = 0; i < 4; i++) {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x + w * i * 0.25, y + h * 0.40, w * 0.25, h * 0.16); ctx.clip();
+        ctx.translate(x + w * (i + 0.12) * 0.25, y + h * 0.40);
+        ctx.rotate(0.6);
+        ctx.fillRect(-w * 0.02, -h * 0.12, w * 0.08, h * 0.42);
+        ctx.restore();
+      }
+      ctx.fillStyle = '#fff';
+      ctx.font = '900 ' + Math.max(3, h * 0.34) + 'px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('⚠', cx, y + h * 0.22);
+      ctx.textBaseline = 'alphabetic';
+      if (Math.floor(gameTime * 5) % 2 === 0) {
+        ctx.fillStyle = '#ff4040';
+        ctx.beginPath(); ctx.arc(cx, y - h * 0.05, Math.max(1.2, w * 0.045), 0, 6.284); ctx.fill();
+      }
+    }
+    /* 車両の後ろ姿（交通車・サムネイル共通） kind: normal|cargo|ramp|police */
+    function drawCarRear(g, cx, gy, w, h, pal, truck, kind) {
       const x = cx - w / 2, y = gy - h;
       g.fillStyle = 'rgba(0,0,0,.35)';
       g.beginPath(); g.ellipse(cx, gy - h * 0.015, w * 0.52, Math.max(1, h * 0.06), 0, 0, 6.284); g.fill();
       g.fillStyle = '#101216';
       rr(g, x + w * 0.03, gy - h * 0.22, w * 0.13, h * 0.22, w * 0.03); g.fill();
       rr(g, x + w * 0.84, gy - h * 0.22, w * 0.13, h * 0.22, w * 0.03); g.fill();
-      if (truck) {
+      if (truck && kind === 'ramp') {
+        /* ジャンプ台トラック：斜めの板＋オレンジの矢印ストライプで通常トラックと区別 */
+        g.fillStyle = '#20242a'; rr(g, x, y + h * 0.55, w, h * 0.42, w * 0.03); g.fill();
+        g.fillStyle = '#d8dde3';
+        g.beginPath();
+        g.moveTo(x + w * 0.04, y + h * 0.97);
+        g.lineTo(x + w * 0.96, y + h * 0.97);
+        g.lineTo(x + w * 0.80, y + h * 0.10);
+        g.lineTo(x + w * 0.20, y + h * 0.10);
+        g.closePath(); g.fill();
+        g.fillStyle = '#ff8c1a';
+        for (let i = 0; i < 3; i++) {
+          const yy = y + h * (0.74 - i * 0.22);
+          g.beginPath();
+          g.moveTo(x + w * 0.30, yy);
+          g.lineTo(x + w * 0.50, yy - h * 0.13);
+          g.lineTo(x + w * 0.70, yy);
+          g.lineTo(x + w * 0.70, yy + h * 0.07);
+          g.lineTo(x + w * 0.50, yy - h * 0.06);
+          g.lineTo(x + w * 0.30, yy + h * 0.07);
+          g.closePath(); g.fill();
+        }
+        g.fillStyle = '#ff3b30';
+        rr(g, x + w * 0.05, y + h * 0.80, w * 0.15, h * 0.08, w * 0.02); g.fill();
+        rr(g, x + w * 0.80, y + h * 0.80, w * 0.15, h * 0.08, w * 0.02); g.fill();
+      } else if (truck) {
         g.fillStyle = pal.body; rr(g, x, y, w, h * 0.95, w * 0.025); g.fill();
         g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(x + w * 0.485, y + h * 0.05, w * 0.03, h * 0.85);
         g.fillRect(x + w * 0.05, y + h * 0.05, w * 0.9, h * 0.025);
@@ -1054,6 +1430,18 @@
         rr(g, x + w * 0.05, y + h * 0.78, w * 0.15, h * 0.08, w * 0.02); g.fill();
         rr(g, x + w * 0.80, y + h * 0.78, w * 0.15, h * 0.08, w * 0.02); g.fill();
         g.fillStyle = pal.dark; rr(g, x + w * 0.01, y + h * 0.88, w * 0.98, h * 0.09, w * 0.02); g.fill();
+        if (kind === 'cargo') {
+          /* 荷台の木箱（落下する貨物と同じデザインで予告する） */
+          const bw = w * 0.62, bh = h * 0.34, bx = x + w * 0.19, by = y + h * 0.13;
+          g.fillStyle = '#8a5a26'; rr(g, bx, by, bw, bh, w * 0.02); g.fill();
+          g.fillStyle = '#a06a2e'; rr(g, bx + bw * 0.07, by + bh * 0.08, bw * 0.86, bh * 0.84, w * 0.015); g.fill();
+          g.strokeStyle = '#5e3c14'; g.lineWidth = Math.max(1, w * 0.02);
+          g.beginPath();
+          g.moveTo(bx + bw * 0.07, by + bh * 0.08); g.lineTo(bx + bw * 0.93, by + bh * 0.92);
+          g.moveTo(bx + bw * 0.93, by + bh * 0.08); g.lineTo(bx + bw * 0.07, by + bh * 0.92);
+          g.stroke();
+          g.fillStyle = '#6e4520'; rr(g, bx + bw * 0.2, by - bh * 0.30, bw * 0.6, bh * 0.30, w * 0.015); g.fill();
+        }
       } else {
         g.fillStyle = pal.body; rr(g, x, y + h * 0.30, w, h * 0.67, w * 0.09); g.fill();
         rr(g, x + w * 0.13, y + h * 0.03, w * 0.74, h * 0.40, w * 0.07); g.fill();
@@ -1065,6 +1453,12 @@
         g.fillStyle = 'rgba(255,170,160,.85)';
         rr(g, x + w * 0.08, y + h * 0.575, w * 0.06, h * 0.04, w * 0.015); g.fill();
         rr(g, x + w * 0.86, y + h * 0.575, w * 0.06, h * 0.04, w * 0.015); g.fill();
+        if (kind === 'police') {
+          /* 白黒ボディ＋ドアライン＋ルーフのパトランプ台座 */
+          g.fillStyle = '#15181d';
+          g.fillRect(x + w * 0.06, y + h * 0.44, w * 0.88, h * 0.075);
+          g.fillStyle = '#2a2e35'; rr(g, x + w * 0.13, y - h * 0.015, w * 0.74, h * 0.075, w * 0.02); g.fill();
+        }
         g.fillStyle = '#e8ecf0'; rr(g, x + w * 0.40, y + h * 0.60, w * 0.20, h * 0.11, 2); g.fill();
         g.fillStyle = pal.dark; rr(g, x + w * 0.02, y + h * 0.83, w * 0.96, h * 0.14, w * 0.04); g.fill();
         g.fillStyle = '#22262c'; rr(g, x + w * 0.78, y + h * 0.94, w * 0.09, h * 0.05, 2); g.fill();
@@ -1084,6 +1478,23 @@
       const mg = ctx.createLinearGradient(0, my, 0, my + mh);
       mg.addColorStop(0, '#263646'); mg.addColorStop(0.62, '#141f2a'); mg.addColorStop(0.63, '#3d3428'); mg.addColorStop(1, '#10161d');
       ctx.fillStyle = mg; rr(ctx, mx, my, mw, mh, 6); ctx.fill();
+      // 後方から追うパトカーはルームミラーに映る
+      if (police && state === 'play') {
+        const behind = (position + playerZ) - police.z;
+        if (behind > -100 && behind < 6500) {
+          const k = clamp(1 - behind / 6500, 0.25, 1);
+          const pw = mw * 0.52 * k + 10, ph = mh * 0.85 * k;
+          const px = mx + mw / 2 + (police.offset - playerX) * mw * 0.3 - pw / 2;
+          const py = my + mh - ph - 1;
+          ctx.save();
+          ctx.beginPath(); rr(ctx, mx, my, mw, mh, 6); ctx.clip();
+          drawCarRear(ctx, px + pw / 2, py + ph, pw, ph, POLICE_PAL, false, 'police');
+          const on = Math.floor(gameTime * 7) % 2 === 0;
+          ctx.fillStyle = on ? '#ff4040' : '#3060ff';
+          ctx.fillRect(px + pw * (on ? 0.18 : 0.62), py + ph * 0.04, pw * 0.2, Math.max(1.5, ph * 0.1));
+          ctx.restore();
+        }
+      }
       // ボンネット
       const hg = ctx.createLinearGradient(0, H * 0.83, 0, H);
       hg.addColorStop(0, car.dark); hg.addColorStop(0.35, car.body); hg.addColorStop(1, car.dark);
@@ -1183,6 +1594,7 @@
     function render() {
       ctx.save();
       if (shake > 0.25) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake * 0.7);
+      if (airT > 0) ctx.translate(0, Math.sin((1 - airT / airDur) * Math.PI) * H * 0.05); // ジャンプ中は景色が沈む
       drawSky();
       const list = buildRenderList();
       drawObjects(list);
@@ -1234,6 +1646,7 @@
       else comboChip.classList.remove('on');
       const showHint = state === 'play' && !nitroOn && gauge >= 25 && (gauge >= car.nitroCap - 0.5 || !everNitro);
       $('chipNitroHint').classList.toggle('on', !!showHint);
+      $('chipPolice').classList.toggle('on', state === 'play' && !!police && police.phase === 'chase');
     }
     function updateTitleBest() {
       $('titleBest').innerHTML = save.bestScore > 0
@@ -1266,15 +1679,18 @@
     cv.addEventListener('pointerdown', e => {
       audio();
       if (state !== 'play') return;
-      dragId = e.pointerId; dragStartX = e.clientX; dragStartPX = playerX;
-      dragTargetX = playerX;
+      dragId = e.pointerId; dragStartX = e.clientX;
       try { cv.setPointerCapture(e.pointerId); } catch (err) {}
     });
+    /* スワイプ：しきい値を超えたら1車線だけ変更し、アンカーを進める（連続スワイプ可） */
     cv.addEventListener('pointermove', e => {
-      if (dragId !== e.pointerId || dragTargetX === null) return;
-      dragTargetX = clamp(dragStartPX + (e.clientX - dragStartX) / Math.max(1, W) * 2.3, -1.12, 1.12);
+      if (dragId !== e.pointerId) return;
+      const dx = e.clientX - dragStartX;
+      const TH = Math.max(34, W * 0.07);
+      if (dx > TH) { shiftLane(1); dragStartX = e.clientX; }
+      else if (dx < -TH) { shiftLane(-1); dragStartX = e.clientX; }
     });
-    function endDrag(e) { if (dragId === e.pointerId) { dragId = null; dragTargetX = null; } }
+    function endDrag(e) { if (dragId === e.pointerId) dragId = null; }
     cv.addEventListener('pointerup', endDrag);
     cv.addEventListener('pointercancel', endDrag);
     function holdBtn(el, set) {
@@ -1296,8 +1712,8 @@
 
     window.addEventListener('keydown', e => {
       const k = e.key;
-      if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keys.left = true; e.preventDefault(); }
-      else if (k === 'ArrowRight' || k === 'd' || k === 'D') { keys.right = true; e.preventDefault(); }
+      if (k === 'ArrowLeft' || k === 'a' || k === 'A') { shiftLane(-1); e.preventDefault(); }
+      else if (k === 'ArrowRight' || k === 'd' || k === 'D') { shiftLane(1); e.preventDefault(); }
       else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === 'Shift' || k === ' ') { keys.nitro = true; if (k === ' ') e.preventDefault(); }
       else if (k === 'ArrowDown' || k === 's' || k === 'S') { keys.brake = true; e.preventDefault(); }
       else if (k === 'p' || k === 'P' || k === 'Escape') { if (state === 'play') pauseGame(); else if (state === 'pause') resumeGame(); }
@@ -1306,9 +1722,7 @@
     });
     window.addEventListener('keyup', e => {
       const k = e.key;
-      if (k === 'ArrowLeft' || k === 'a' || k === 'A') keys.left = false;
-      else if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.right = false;
-      else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === 'Shift' || k === ' ') keys.nitro = false;
+      if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === 'Shift' || k === ' ') keys.nitro = false;
       else if (k === 'ArrowDown' || k === 's' || k === 'S') keys.brake = false;
     });
     document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pauseGame(); });
@@ -1360,8 +1774,10 @@
     /* テスト用フック（スポーン保証とプレイ可能性の検証に使用） */
     window.__NITRO = {
       start: startGame, step,
-      setTargetX(v) { dragTargetX = v; },
-      clearTarget() { dragTargetX = null; },
+      setTargetX(v) { playerLane = nearestLane(v); },
+      clearTarget() {},
+      shiftLane,
+      setLane(i) { playerLane = clamp(i | 0, 0, 2); },
       setNitro(b) { nitroBtnHeld = b; },
       setBrake(b) { brakeBtnHeld = b; },
       planRowLanes, rowGap,
@@ -1369,6 +1785,7 @@
       get state() { return state; },
       get lives() { return lives; },
       get playerX() { return playerX; },
+      get playerLane() { return playerLane; },
       get playerZ() { return playerZ; },
       get position() { return position; },
       get speed() { return speed; },
@@ -1376,6 +1793,10 @@
       get dist() { return dist; },
       get level() { return level; },
       get cars() { return cars; },
+      get crates() { return crates; },
+      get police() { return police; },
+      get airT() { return airT; },
+      get score() { return score; },
     };
     </script>
   </body>
