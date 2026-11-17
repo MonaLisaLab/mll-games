@@ -267,7 +267,7 @@
             <button class="btn" id="startBtn" type="button">▶ スタート</button>
             <button class="btn hidden" id="nextStageBtn" type="button" style="background:#e79a00;color:#231a00">次のステージへ ➜</button>
             <button class="btn ghost hidden" id="exitFsBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">全画面を終了</button>
-            <a class="btn ghost" href="https://monalisalab.github.io/mll-games/" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🏠 トップページへ</a>
+            <a class="btn ghost hidden" id="ovHomeBtn" href="https://monalisalab.github.io/mll-games/" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🏠 ホームへ戻る</a>
           </div>
         </div>
         <button class="menu-btn" id="menuBtn" type="button" aria-label="メニューを開く">⏸</button>
@@ -282,7 +282,7 @@
             <button class="btn ghost" id="menuSoundBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🔊 音 ON</button>
             <button class="btn ghost" id="menuStageBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🎯 ステージ・設定へ</button>
             <button class="btn ghost" id="menuExitBtn" type="button" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">⛶ 全画面を終了</button>
-            <a class="btn ghost wide" href="https://monalisalab.github.io/mll-games/" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🏠 トップページに戻る</a>
+            <a class="btn ghost wide" href="https://monalisalab.github.io/mll-games/" style="background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)">🏠 ホームへ戻る</a>
           </div>
         <details class="menu-panel" id="missionsPanel">
           <summary>🎯 ミッション（全20）― 展開して確認</summary>
@@ -366,6 +366,7 @@
           stageGoalEl=document.getElementById("stageGoal"), stageProgEl=document.getElementById("stageProg"),
           stageHint=document.getElementById("stageHint"),
           nextStageBtn=document.getElementById("nextStageBtn"), exitFsBtn=document.getElementById("exitFsBtn"),
+          ovHomeBtn=document.getElementById("ovHomeBtn"),
           fsBtn=document.getElementById("fsBtn"),
           nextRewardEl=document.getElementById("nextReward"), playHintEl=document.getElementById("playHint"),
           ovMeters=document.getElementById("ovMeters"),
@@ -816,6 +817,7 @@
         nextStageBtn.classList.toggle("hidden",isLast);
         nextStageBtn.textContent=isLast?"":"次のステージへ ➜";
         exitFsBtn.classList.remove("hidden");
+        ovHomeBtn.classList.remove("hidden");
         overlay.classList.remove("hidden");
         checkMissions(); renderStages(); renderMissions(); updateHud();
       }
@@ -927,7 +929,7 @@
         /* Sakurai: death is short and flashy — hit-stop + flash + big shake,
            then the (big) retry button is up almost immediately. */
         triggerHitstop(320); triggerFlash(255,70,50,300,0.42); triggerShake(11,380);
-        nextStageBtn.classList.add("hidden"); exitFsBtn.classList.remove("hidden");
+        nextStageBtn.classList.add("hidden"); exitFsBtn.classList.remove("hidden"); ovHomeBtn.classList.remove("hidden");
         shakeUntil=now()+320; boardWrap.classList.remove("shake"); void boardWrap.offsetWidth; boardWrap.classList.add("shake");
         var isBest=score>best; if(isBest) best=score;
         saveProgress();
@@ -1817,6 +1819,7 @@
         ovTitle.textContent="一時停止中";
         ovMsg.textContent="スコア "+score+" 点 ／ 長さ "+segCount+" ／ Lv"+level+"。再開ボタンか Space で続けられます。";
         exitFsBtn.classList.remove("hidden");
+        ovHomeBtn.classList.remove("hidden");
         startBtn.textContent="▶ 再開";
         overlay.classList.remove("hidden");
       }
