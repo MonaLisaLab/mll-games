@@ -10,6 +10,7 @@
 - [タイミング斬り](timing-zan/index.html) — スワイプ斬撃アクション。画面下から放物線で放り投げられる果物をスワイプで真っ二つに斬る。両半分が飛び散り果汁が飛ぶ演出、ヒットストップ・スローモーション・画面振動。同時斬りボーナス（1スワイプ3個以上）、コンボ、FEVER（スコア2倍）、金の果物150点、落下でライフ減、斬ると爆発する爆弾、WAVE制の難易度、累計スコアで刀5種を解放・切替、ミッション9種、ベストスコア保存つき。
 - [まもりの塔](mamori-tower/index.html) — タワーディフェンス。うねる道を進む敵から城を守る。弓塔・砲塔・氷塔・雷塔の4種タワー（各Lv3まで強化・売却可）、スライム・コウモリ・ゴーレム・ボスの4種の敵、全15ウェーブ（5・10・15がボスウェーブ）。ゴール直前撃破のボーナスコイン、ミッション6種、ウェーブ3・5でのタワー解放、ヒットストップ・画面振動・効果音、ベストスコア保存つき。
 - [ニトロラッシュ](nitro-rush/index.html) — レース／3レーンドッジ。3レーンのハイウェイを駆け抜け、一般車・高速車・トラック・バリアを避けてコインを集める。ニトロ加速でスコア倍率×2、ギリギリすり抜けのニアミスでコンボボーナス。500mごとのレベルアップ（5の倍数はラッシュ）、ライフ3、ミッション6種、累計距離でマシン4種を解放、ベストスコア・ベスト距離保存つき。
+- [ブロックラッシュ](block-rush/index.html) — ブロック崩し。パドルでボールを弾いてブロックを全て壊すとステージクリア（全10ステージ）。パドルに当てず連続破壊でコンボ倍率アップ、金ブロック高得点、耐久ブロック・動くブロック。カプセル7種（マルチボール・ワイド・レーザー・スロー・キャッチ・ライフ+1・悪いパドル縮小）、ミッション6種、累計スコアでパドルスキン4種を解放、ヒットストップ・画面振動・効果音、ベストスコア保存つき。
 
 ## BGMクレジット
 
@@ -21,3 +22,4 @@
 - タイミング斬り：「Taiko drums (seamless loop)」by jobro — CC-BY 3.0 — https://opengameart.org/content/taiko-drums-seamless-loop
 - まもりの塔：「Tower Defense Theme」by Deceased Superior Technician (DST) — CC0 — https://opengameart.org/content/tower-defense-theme
 - ニトロラッシュ：「8-bit - Last Mission」by HydroGene — CC0 — https://opengameart.org/content/8-bit-last-mission
+- ブロックラッシュ：「8-bit - Mechanical Complex」by HydroGene — CC0 — https://opengameart.org/content/8-bit-mechanical-complex
