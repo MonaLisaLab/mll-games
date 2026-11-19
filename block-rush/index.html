@@ -354,7 +354,7 @@
       function layoutField() {
         field.ballR = Math.max(5, Math.min(9, Math.min(W, H) * 0.016));
         paddle.baseW = Math.max(64, Math.min(150, W * 0.19));
-        field.paddleY = H - Math.max(46, H * 0.085);
+        field.paddleY = H - Math.max(96, H * 0.16);
         if (state === STATE.TITLE) { paddle.x = W / 2; paddle.targetX = W / 2; }
         paddle.x = Math.max(0, Math.min(W, paddle.x));
         layoutBlocks();
