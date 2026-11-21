@@ -380,7 +380,7 @@ function randomTier(){
 }
 function newFruit(x, y, tier, pop){
   return { x, y, vx:0, vy: pop ? -170 : 0, r: radiusOf(tier), tier,
-           asleep:false, sleepT:0, born: nowMs(), scale: pop ? 0.55 : 1, dead:false };
+           asleep:false, sleepT:0, born: nowMs(), bornStep: physStep, scale: pop ? 0.55 : 1, dead:false };
 }
 function setupBoard(){
   fruits = []; particles = []; floaters = []; confetti = [];
@@ -402,8 +402,9 @@ function setupBoard(){
 
 /* ---------- 物理 ---------- */
 const GRAV = 2300, STEP = 1/120;
+let physStep = 0; // 物理ステップ番号（生成直後ステップの合体除外に使う）
 function physics(dt){
-  const mergePairs = [];
+  physStep++;
   for (const f of fruits){
     if (f.asleep) continue;
     f.vy += GRAV * dt;
@@ -434,11 +435,6 @@ function physics(dt){
         if (d2 >= minD * minD) continue;
         if (d2 < 0.0001){ dx = (Math.random()-0.5); dy = -1; d2 = dx*dx + dy*dy; }
         const d = Math.sqrt(d2), nx = dx/d, ny = dy/d, pen = minD - d;
-        // 合体判定（反復の初回のみ）
-        if (iter === 0 && a.tier === b.tier && a.tier < 9 &&
-            nowMs() - Math.max(a.born, b.born) > 90 && d < minD * 0.94){
-          mergePairs.push([a, b]); a.dead = b.dead = true; continue;
-        }
         const ma = a.asleep ? 0 : 1/(a.r*a.r), mb = b.asleep ? 0 : 1/(b.r*b.r);
         const mSum = ma + mb;
         if (mSum === 0) continue;
@@ -469,7 +465,21 @@ function physics(dt){
       }
     }
   }
-  // 合体処理
+  // 合体判定：衝突解決後に全ペアを接触ベースで走査する。
+  // 落とした瞬間に限らず、静止中の接触や弾き飛ばされてぶつかった場合も合体させる。
+  // （旧判定は「半径和の94%未満までめり込んだ場合のみ」で、静止接触では永遠に合体しなかった）
+  const mergePairs = [];
+  for (let i = 0; i < fruits.length; i++){
+    const a = fruits[i]; if (a.dead) continue;
+    for (let j = i + 1; j < fruits.length; j++){
+      const b = fruits[j]; if (b.dead) continue;
+      if (a.tier !== b.tier || a.tier >= 9) continue;
+      // 合体で生まれたフルーツは、生成されたステップ内では再合体させない（連鎖自体は次ステップから可）
+      if (physStep - Math.max(a.bornStep, b.bornStep) < 1) continue;
+      const dx = b.x - a.x, dy = b.y - a.y, minD = a.r + b.r + 0.5; // 接触（中心距離≒半径和）で判定。+0.5は静止時の誤差吸収
+      if (dx*dx + dy*dy <= minD * minD){ mergePairs.push([a, b]); a.dead = b.dead = true; }
+    }
+  }
   for (const [a, b] of mergePairs) doMerge(a, b);
   if (mergePairs.length) fruits = fruits.filter(f => !f.dead);
   // スリープ判定＆落下チェック
@@ -504,7 +514,8 @@ function doMerge(a, b){
   const nt = a.tier + 1;
   const x = (a.x + b.x)/2, y = (a.y + b.y)/2;
   const nf = newFruit(x, y, nt, true);
-  nf.vx = (Math.random()-0.5) * 50;
+  nf.vx = (a.vx + b.vx) / 2; // 速度は2つの平均を引き継ぐ（中点に生成）
+  nf.vy = (a.vy + b.vy) / 2;
   fruits.push(nf);
   wakeAround(x, y, nf.r * 3.4);
   // コンボ
