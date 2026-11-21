@@ -13,6 +13,7 @@
 - [ブロックラッシュ](block-rush/index.html) — ブロック崩し。パドルでボールを弾いてブロックを全て壊すとステージクリア（全10ステージ）。パドルに当てず連続破壊でコンボ倍率アップ、金ブロック高得点、耐久ブロック・動くブロック。カプセル7種（マルチボール・ワイド・レーザー・スロー・キャッチ・ライフ+1・悪いパドル縮小）、ミッション6種、累計スコアでパドルスキン4種を解放、ヒットストップ・画面振動・効果音、ベストスコア保存つき。
 - [ビートタップ](beat-tap/index.html) — リズムゲーム。BGM（BPM 110）のビートに合わせて4レーンに落ちてくるノーツを叩く。PERFECT/GOOD/MISS判定、ヒットストップ・パーティクル・画面振動、コンボ20でFEVER（スコア×2）、ロングノーツ、曲ループごとのレベルアップ、ミッション6種、累計スコアでノーツスキン4種を解放、ベストスコア・最大コンボ保存つき。
 - [カラーチェイン](color-chain/index.html) — パズル。同じ色のオーブをなぞってつなげて消す（7×7盤面、8方向）。スコア10×n×n、3秒以内の連続消去でコンボ倍率（最大×3）、8個以上のチェーンでFEVER（スコア×2）。60秒で目標スコアを目指すレベル制、Lv3で5色・Lv5で6色、Lv4から岩ブロック、詰み時は自動シャッフル。ミッション6種、累計スコアで盤面テーマ4種を解放、ベストスコア・最大チェーン・最大コンボ保存つき。
+- [フルーツマージ](fruit-merge/index.html) — 物理演算・マージ系パズル。上からフルーツを落とし、同じもの同士をくっつけて進化させる。合体スコアは段階nで n×(n+1)/2×10 点、1.5秒以内の連続合体でコンボ倍率（最大×5）、スイカ完成で+1000点＆10秒FEVER（スコア×2）。デンジャーライン上で3秒静止するとゲームオーバー。ミッション6種、累計スコアで背景テーマ4種を解放、ベストスコア・最大コンボ・スイカ完成数保存つき。
 
 ## BGMクレジット
 
@@ -27,3 +28,4 @@
 - ブロックラッシュ：「8-bit - Mechanical Complex」by HydroGene — CC0 — https://opengameart.org/content/8-bit-mechanical-complex
 - ビートタップ：「8-bit - I am not clumsy!」by HydroGene — CC0 — https://opengameart.org/content/8-bit-i-am-not-clumsy
 - カラーチェイン：「8-bit - Slay The Evil」by HydroGene — CC0 — https://opengameart.org/content/8-bit-slay-the-evil
+- フルーツマージ：「8-bit - Jester Theme」by HydroGene — CC0 — https://opengameart.org/content/8-bit-jester-theme
