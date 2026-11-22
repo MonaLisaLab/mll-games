@@ -14,6 +14,7 @@
 - [ビートタップ](beat-tap/index.html) — リズムゲーム。BGM（BPM 110）のビートに合わせて4レーンに落ちてくるノーツを叩く。PERFECT/GOOD/MISS判定、ヒットストップ・パーティクル・画面振動、コンボ20でFEVER（スコア×2）、ロングノーツ、曲ループごとのレベルアップ、ミッション6種、累計スコアでノーツスキン4種を解放、ベストスコア・最大コンボ保存つき。
 - [カラーチェイン](color-chain/index.html) — パズル。同じ色のオーブをなぞってつなげて消す（7×7盤面、8方向）。スコア10×n×n、3秒以内の連続消去でコンボ倍率（最大×3）、8個以上のチェーンでFEVER（スコア×2）。60秒で目標スコアを目指すレベル制、Lv3で5色・Lv5で6色、Lv4から岩ブロック、詰み時は自動シャッフル。ミッション6種、累計スコアで盤面テーマ4種を解放、ベストスコア・最大チェーン・最大コンボ保存つき。
 - [フルーツマージ](fruit-merge/index.html) — 物理演算・マージ系パズル。上からフルーツを落とし、同じもの同士をくっつけて進化させる。合体スコアは段階nで n×(n+1)/2×10 点、1.5秒以内の連続合体でコンボ倍率（最大×5）、スイカ完成で+1000点＆10秒FEVER（スコア×2）。デンジャーライン上で3秒静止するとゲームオーバー。ミッション6種、累計スコアで背景テーマ4種を解放、ベストスコア・最大コンボ・スイカ完成数保存つき。
+- [メモリーラッシュ](memory-rush/index.html) — 神経衰弱×タイムアタック。裏向きカードを2枚めくって同じ絵柄をそろえる。1ペア100点×コンボ倍率（最大×5）、ミスで制限時間−2秒（Lv1は−1秒）＆コンボリセット、4連続正解でFEVER（8秒間スコア×2）。レベル制（Lv1は4×3・65秒、Lv2以降は必須ペア数×7秒＋10秒）、Lv2からスター（+300点＆+5秒、クリア必須）、Lv3からボム（任意、+200点＆−5秒）。ミッション6種、累計スコアでカードテーマ4種を解放、ベストスコア・到達レベル・最大コンボ保存つき。
 
 ## BGMクレジット
 
@@ -29,3 +30,4 @@
 - ビートタップ：「8-bit - I am not clumsy!」by HydroGene — CC0 — https://opengameart.org/content/8-bit-i-am-not-clumsy
 - カラーチェイン：「8-bit - Slay The Evil」by HydroGene — CC0 — https://opengameart.org/content/8-bit-slay-the-evil
 - フルーツマージ：「8-bit - Jester Theme」by HydroGene — CC0 — https://opengameart.org/content/8-bit-jester-theme
+- メモリーラッシュ：「Happy Adventure (Loop)」by TinyWorlds — CC0 — https://opengameart.org/content/happy-adventure-loop
