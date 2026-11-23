@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <meta name="color-scheme" content="dark" />
     <link rel="icon" href="data:," />
-    <title>ハイカードバトル</title>
+    <title>ブラックジャックバトル</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Cinzel:wght@700;900&display=swap" rel="stylesheet" />
@@ -95,11 +95,13 @@
       #play {
         position: absolute; inset: 0; z-index: 10;
         display: flex; flex-direction: column;
-        padding-top: calc(5.5rem + env(safe-area-inset-top));
+        padding-top: calc(4.6rem + env(safe-area-inset-top));
         padding-bottom: calc(.5rem + env(safe-area-inset-bottom));
       }
-      #enemyZone { display: flex; flex-direction: column; align-items: center; gap: .35rem; }
+      #enemyZone { display: flex; flex-direction: column; align-items: center; gap: .3rem; }
       .foe-head { display: flex; align-items: center; gap: .5rem; }
+      #foeFace { font-size: 2.4rem; line-height: 1; filter: drop-shadow(0 3px 6px rgba(0,0,0,.55)); }
+      #enemyZone.boss #foeFace { font-size: 3.9rem; }
       .foe-name { font-weight: 800; font-size: .95rem; letter-spacing: .06em; text-shadow: 0 2px 6px rgba(0,0,0,.6); }
       .boss-badge {
         display: none; background: linear-gradient(180deg, #e33, #a00);
@@ -125,17 +127,21 @@
       }
       .hpbar.hurt { animation: shakeSm .25s linear; }
 
-      #enemyRow { display: flex; align-items: center; gap: .9rem; margin-top: .15rem; }
-      #deckPile { display: flex; flex-direction: column; align-items: center; gap: .2rem; }
+      #enemyRow { display: flex; align-items: flex-start; gap: .8rem; margin-top: .1rem; }
+      #deckPile { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding-top: .3rem; }
       #deckPile .pile {
-        width: 2.5rem; height: 3.5rem; border-radius: .35rem;
+        width: 2.3rem; height: 3.2rem; border-radius: .35rem;
         box-shadow: 2px 2px 0 rgba(0,0,0,.35), 4px 4px 0 rgba(0,0,0,.2);
         border: 2px solid rgba(255,255,255,.85);
       }
       #deckPile .cnt { font-size: .62rem; font-weight: 700; color: #ffe9a8; }
 
       /* ============ CARDS ============ */
-      .card3d { width: clamp(84px, 24vmin, 128px); aspect-ratio: 5 / 7; perspective: 700px; }
+      .bj-cards { --cw: clamp(60px, 16.5vmin, 98px); display: flex; justify-content: center; align-items: center; min-height: calc(var(--cw) * 1.4 + 4px); padding: 0 .4rem; }
+      .bj-cards .card3d { width: var(--cw); }
+      .bj-cards.tight .card3d + .card3d { margin-left: calc(var(--cw) * -0.38); }
+      .card3d { width: clamp(84px, 24vmin, 128px); aspect-ratio: 5 / 7; perspective: 700px; flex: none; }
+      .card3d.deal { animation: dealIn .3s ease-out backwards; }
       .card-inner {
         position: relative; width: 100%; height: 100%;
         transform-style: preserve-3d; transition: transform .45s cubic-bezier(.3,.7,.3,1);
@@ -159,50 +165,50 @@
         repeating-linear-gradient(45deg, rgba(255,255,255,.16) 0 6px, transparent 6px 12px),
         repeating-linear-gradient(-45deg, rgba(255,255,255,.16) 0 6px, transparent 6px 12px),
         linear-gradient(150deg, #274b9f, #12275c); }
+      .back-crimson { background:
+        repeating-linear-gradient(45deg, rgba(255,255,255,.14) 0 6px, transparent 6px 12px),
+        repeating-linear-gradient(-45deg, rgba(255,210,120,.18) 0 6px, transparent 6px 12px),
+        linear-gradient(150deg, #b01e28, #5c0a12); }
+      .back-royal { background:
+        radial-gradient(circle at 50% 42%, rgba(255,215,110,.55), transparent 55%),
+        repeating-linear-gradient(45deg, rgba(255,215,110,.16) 0 5px, transparent 5px 10px),
+        repeating-linear-gradient(-45deg, rgba(255,215,110,.16) 0 5px, transparent 5px 10px),
+        linear-gradient(150deg, #1d2f6e, #0a1233); }
       .back-gold { background:
         radial-gradient(circle at 50% 42%, rgba(255,255,255,.5), transparent 55%),
         repeating-linear-gradient(45deg, rgba(120,72,0,.25) 0 5px, transparent 5px 10px),
         linear-gradient(150deg, #f6c945, #b8860b); }
-      .back-sakura { background:
-        radial-gradient(circle at 22% 26%, rgba(255,255,255,.55) 0 7%, transparent 9%),
-        radial-gradient(circle at 74% 62%, rgba(255,255,255,.45) 0 6%, transparent 8%),
-        radial-gradient(circle at 55% 20%, rgba(255,183,213,.8) 0 5%, transparent 7%),
-        linear-gradient(150deg, #ffb7d5, #e5639e); }
-      .back-galaxy { background:
-        radial-gradient(circle at 30% 30%, #fff 0 1.6%, transparent 2.4%),
-        radial-gradient(circle at 70% 55%, #cfe4ff 0 1.3%, transparent 2%),
-        radial-gradient(circle at 52% 78%, #fff 0 1.1%, transparent 1.8%),
-        radial-gradient(circle at 82% 20%, #ffe9a8 0 1.2%, transparent 1.9%),
-        linear-gradient(150deg, #2b1055, #0b1035 60%, #150a2e); }
 
-      .card-corner { display: flex; flex-direction: column; align-items: center; width: 1.3rem; line-height: 1; }
-      .card-corner .num { font-family: "Cinzel", serif; font-weight: 900; font-size: 1.05rem; }
-      .card-corner .suit { font-size: .85rem; }
+      .card-corner { display: flex; flex-direction: column; align-items: center; width: 1.2rem; line-height: 1; }
+      .card-corner .num { font-family: "Cinzel", serif; font-weight: 900; font-size: .95rem; }
+      .card-corner .suit { font-size: .78rem; }
       .card-center { flex: 1; display: flex; align-items: center; justify-content: center; }
-      .card-center .big { font-family: "Cinzel", serif; font-weight: 900; font-size: 3rem; line-height: 1; }
-      .card-center .bigsuit { font-size: 1.5rem; margin-top: .1rem; }
+      .card-center .big { font-family: "Cinzel", serif; font-weight: 900; font-size: 2.5rem; line-height: 1; }
+      .card-center .bigsuit { font-size: 1.3rem; margin-top: .1rem; }
       .card-bottom { display: flex; justify-content: flex-end; }
       .card-bottom .card-corner { transform: rotate(180deg); }
       .suit-red { color: #d42a2a; }
       .suit-black { color: #1c2430; }
-      .card-front.trump {
-        background: linear-gradient(160deg, #fff6c9, #ffd94d 55%, #f0a818);
-        border-color: #fff2b0; color: #5c3a00;
-      }
-      .card-front.trump .big { font-size: 3.4rem; color: #b97e00; text-shadow: 0 0 14px rgba(255,255,255,.8); }
       .card-front.win-glow { box-shadow: 0 0 0 3px #ffd94d, 0 0 34px 8px rgba(255,217,77,.85); }
       .card-front.lose-glow { box-shadow: 0 0 0 3px #ff5f4d, 0 0 30px 6px rgba(255,60,40,.8); }
-      @keyframes cardBurst { 0%{transform:scale(1);opacity:1} 40%{transform:scale(1.22) rotate(-3deg);opacity:1} 100%{transform:scale(1.45) rotate(4deg);opacity:0} }
-      .bursting { animation: cardBurst .38s ease-out forwards; }
       @keyframes dealIn { 0%{transform:translateY(26px) scale(.85);opacity:0} 100%{transform:translateY(0) scale(1);opacity:1} }
+
+      .total-badge {
+        display: inline-block; font-weight: 800; font-size: .85rem;
+        background: rgba(0,0,0,.55); border: 1px solid rgba(255,232,170,.5);
+        color: #ffe9a8; border-radius: 999px; padding: .18rem .75rem;
+        min-height: 1.6rem;
+      }
+      .total-badge.bust { color: #ff8a7a; border-color: rgba(255,90,70,.7); }
+      .total-badge.bj { color: #3a2700; background: linear-gradient(180deg, #ffe97a, #ffb400); border-color: #fff2b0; box-shadow: 0 0 14px rgba(255,200,40,.8); }
 
       /* ============ MID ZONE ============ */
       #midZone {
         flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: .3rem; position: relative; min-height: 4.2rem;
+        gap: .3rem; position: relative; min-height: 3.6rem; padding: 0 .6rem;
       }
       #resultText {
-        font-size: clamp(1.7rem, 7.5vmin, 2.6rem); font-weight: 800; letter-spacing: .04em;
+        font-size: clamp(1.5rem, 6.5vmin, 2.4rem); font-weight: 800; letter-spacing: .04em;
         text-shadow: 0 3px 10px rgba(0,0,0,.65); min-height: 1.2em; text-align: center;
       }
       #resultText.win { color: #ffd94d; }
@@ -225,31 +231,27 @@
       }
       #feverBadge.on { display: inline-block; }
       @keyframes feverPulse { from{transform:scale(1)} to{transform:scale(1.07)} }
-      #promptText { font-size: .82rem; font-weight: 700; color: rgba(255,248,231,.85); text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+      #promptText { font-size: .88rem; font-weight: 700; color: rgba(255,248,231,.92); text-shadow: 0 1px 4px rgba(0,0,0,.6); text-align: center; min-height: 1.3em; }
 
       /* ============ PLAYER ZONE ============ */
-      #playerZone { display: flex; flex-direction: column; align-items: center; gap: .45rem; }
+      #playerZone { display: flex; flex-direction: column; align-items: center; gap: .4rem; }
+      .you-row { display: flex; align-items: center; gap: .6rem; }
       .you-label { font-size: .72rem; font-weight: 800; letter-spacing: .14em; color: #b8ffd2; }
-      #hand { display: flex; gap: clamp(.5rem, 3vw, 1.1rem); justify-content: center; padding: .2rem .4rem .1rem; }
-      .hand-card {
-        width: clamp(88px, 27vmin, 132px); aspect-ratio: 5 / 7;
-        border-radius: .55rem; cursor: pointer; position: relative;
-        transition: transform .15s ease, box-shadow .15s ease;
-        animation: dealIn .3s ease-out backwards;
+      #actions { display: flex; gap: .8rem; justify-content: center; padding: .15rem .5rem 0; }
+      .act-btn {
+        border: none; cursor: pointer; border-radius: 999px;
+        font-weight: 800; font-size: 1.3rem; letter-spacing: .06em;
+        padding: .7rem 2rem .6rem; min-width: 9.2rem;
+        display: flex; flex-direction: column; align-items: center; gap: .05rem;
+        box-shadow: 0 6px 20px rgba(0,0,0,.5);
+        transition: transform .1s ease, opacity .15s ease, filter .15s ease;
       }
-      .hand-card .card-front { position: absolute; inset: 0; transform: none; backface-visibility: visible; }
-      .hand-card:hover { transform: translateY(-8px); }
-      .hand-card:active { transform: translateY(-4px) scale(.97); }
-      .hand-card.selected { transform: translateY(-16px) scale(1.05); }
-      .hand-card.beats { box-shadow: 0 0 0 2px rgba(87,227,137,.9), 0 8px 20px rgba(0,0,0,.4); }
-      .hand-card .key-hint {
-        position: absolute; top: -.55rem; right: -.45rem; z-index: 2;
-        width: 1.35rem; height: 1.35rem; border-radius: 50%;
-        background: rgba(0,0,0,.65); border: 1px solid rgba(255,232,170,.6);
-        color: #ffe9a8; font-size: .7rem; font-weight: 800;
-        display: flex; align-items: center; justify-content: center;
-      }
-      .hand-card.fly { transition: transform .3s ease-in, opacity .3s ease-in; transform: translateY(-38dvh) scale(.8); opacity: 0; }
+      .act-btn .act-sub { font-size: .62rem; font-weight: 700; letter-spacing: .04em; opacity: .85; }
+      .act-btn.hit { background: linear-gradient(180deg, #6fe89a, #1d9e57); color: #062d18; }
+      .act-btn.stand { background: linear-gradient(180deg, #ffe97a, #ffb400); color: #3a2700; }
+      .act-btn:active { transform: scale(.94); }
+      .act-btn:disabled { opacity: .35; filter: grayscale(.5); cursor: default; }
+      .act-btn:disabled:active { transform: none; }
 
       /* ============ FX ============ */
       #fx { position: absolute; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; }
@@ -295,12 +297,13 @@
       .screen.hidden { display: none; }
       .screen.dim { background: rgba(3, 20, 13, .82); backdrop-filter: blur(2px); }
       .game-title {
-        font-size: clamp(2rem, 10vmin, 3.4rem); font-weight: 800; letter-spacing: .03em;
+        font-size: clamp(1.7rem, 8.5vmin, 3.2rem); font-weight: 800; letter-spacing: .03em;
         color: #fff; text-shadow: 0 0 22px rgba(255,217,77,.45), 0 4px 0 #8a6d1c, 0 8px 18px rgba(0,0,0,.6);
         margin: 0;
       }
       .game-title .accent { color: #ffd94d; }
-      .rule-line { font-size: .92rem; font-weight: 700; color: #eafff2; max-width: 30rem; line-height: 1.6; margin: 0; }
+      .rule-box { display: flex; flex-direction: column; gap: .25rem; max-width: 32rem; }
+      .rule-line { font-size: .92rem; font-weight: 700; color: #eafff2; line-height: 1.55; margin: 0; text-align: left; }
       .title-stats { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; }
       .stat-chip {
         background: rgba(0,0,0,.45); border: 1px solid rgba(255,232,170,.4);
@@ -379,8 +382,8 @@
 
       @media (max-width: 600px) {
         #titleScreen { gap: .45rem; padding: .8rem .6rem; }
-        #titleScreen .game-title { font-size: 2rem; }
-        #titleScreen .rule-line { font-size: .82rem; line-height: 1.45; }
+        #titleScreen .game-title { font-size: 1.75rem; }
+        #titleScreen .rule-line { font-size: .8rem; line-height: 1.45; }
         #titleScreen .start-pulse { padding: .6rem 1.9rem; font-size: 1.05rem; }
         #titleScreen .theme-btn { min-width: 4rem; padding: .4rem .45rem; }
         #titleScreen .theme-btn .swatch { width: 1.8rem; height: 2.5rem; }
@@ -388,20 +391,24 @@
         #titleScreen .mission-item { padding: .32rem .5rem; font-size: .72rem; gap: .4rem; }
         #titleScreen .mission-item .mark { width: 1.1rem; height: 1.1rem; font-size: .65rem; }
         #titleScreen .section-label { margin-top: .1rem; }
+        .act-btn { min-width: 8.2rem; font-size: 1.15rem; padding: .6rem 1.4rem .55rem; }
       }
       @media (max-height: 700px) {
         .screen { gap: .5rem; padding: .7rem; }
-        .game-title { font-size: clamp(1.6rem, 8vmin, 2.4rem); }
+        .game-title { font-size: clamp(1.5rem, 7.5vmin, 2.3rem); }
         .rule-line { font-size: .82rem; }
         .start-pulse { padding: .6rem 1.9rem; font-size: 1.05rem; }
         .theme-btn .swatch { width: 1.9rem; height: 2.6rem; }
         .mission-item { padding: .3rem .6rem; font-size: .78rem; }
         .stat-chip { padding: .3rem .6rem; font-size: .78rem; }
+        #foeFace { font-size: 1.9rem; }
+        #enemyZone.boss #foeFace { font-size: 3rem; }
+        .bj-cards { --cw: clamp(52px, 14.5vmin, 84px); }
       }
       @media (max-height: 560px) {
-        .card3d { width: clamp(64px, 19vmin, 100px); }
-        .hand-card { width: clamp(68px, 21vmin, 104px); }
-        #play { padding-top: calc(5rem + env(safe-area-inset-top)); }
+        .bj-cards { --cw: clamp(46px, 13vmin, 72px); }
+        #play { padding-top: calc(4.2rem + env(safe-area-inset-top)); }
+        .act-btn { font-size: 1.05rem; padding: .5rem 1.2rem .45rem; }
       }
       @media (prefers-reduced-motion: reduce) {
         #stage.shake-sm, #stage.shake-lg, #stage.shake-xl { animation: none; }
@@ -417,11 +424,11 @@
         <div class="hud-left">
           <span class="hud-stat"><span class="k">SCORE</span><span class="v" id="hudScore">0</span></span>
           <span class="hud-stat"><span class="k">ROUND</span><span class="v small" id="hudRound">-</span></span>
-          <span id="hudTheme">次のテーマまであと 5,000点</span>
+          <span id="hudTheme">次のテーマまであと 3,000点</span>
         </div>
         <div class="hud-right">
-          <button class="icon-btn" id="muteBtn" aria-label="ミュート切替">♪</button>
-          <button class="icon-btn" id="pauseBtn" aria-label="ポーズ">Ⅱ</button>
+          <button class="icon-btn" id="muteBtn" aria-label="ミュート切替">🔊</button>
+          <button class="icon-btn" id="pauseBtn" aria-label="ポーズ">⏸</button>
         </div>
       </header>
 
@@ -430,35 +437,41 @@
         <section id="enemyZone">
           <div class="foe-head">
             <span class="round-label" id="roundLabel">ROUND 1</span>
-            <span class="foe-name" id="foeName">ENEMY</span>
+            <span id="foeFace">💧</span>
+            <span class="foe-name" id="foeName">スライム</span>
             <span class="boss-badge" id="bossBadge">BOSS</span>
           </div>
-          <div class="hpbar enemy" id="enemyBar"><div class="fill" id="enemyFill"></div><span class="hptext" id="enemyHpText">HP 60 / 60</span></div>
+          <div class="hpbar enemy" id="enemyBar"><div class="fill" id="enemyFill"></div><span class="hptext" id="enemyHpText">HP 40 / 40</span></div>
           <div id="enemyRow">
-            <div class="card3d" id="enemyCardWrap">
-              <div class="card-inner" id="enemyCardInner">
-                <div class="card-face card-back back-classic" id="enemyCardBack"></div>
-                <div class="card-face card-front" id="enemyCardFront"></div>
-              </div>
+            <div>
+              <div class="bj-cards" id="enemyCards"></div>
+              <div style="text-align:center"><span class="total-badge" id="enemyTotal">敵の合計 ？</span></div>
             </div>
             <div id="deckPile">
               <div class="pile back-classic" id="deckBack"></div>
-              <span class="cnt">山札 <span id="deckCount">54</span></span>
+              <span class="cnt">山札 <span id="deckCount">52</span></span>
             </div>
           </div>
         </section>
 
         <section id="midZone">
-          <div id="feverBadge">FEVER! ダメージ×2（残り<span id="feverLeft">5</span>ターン）</div>
+          <div id="feverBadge">FEVER! ダメージ×1.5・スコア×2（残り<span id="feverLeft">5</span>ハンド）</div>
           <div id="resultText"></div>
-          <div id="comboBadge"><span id="comboNum">0</span>連勝コンボ！</div>
-          <div id="promptText">カードを選んで攻撃！</div>
+          <div id="comboBadge"><span id="comboNum">0</span>連勝中！</div>
+          <div id="promptText">ヒットかスタンドを選ぼう</div>
         </section>
 
         <section id="playerZone">
-          <span class="you-label">YOU</span>
+          <div class="you-row">
+            <span class="you-label">YOU</span>
+            <span class="total-badge" id="playerTotal">合計 0</span>
+          </div>
+          <div class="bj-cards" id="playerCards"></div>
           <div class="hpbar player" id="playerBar"><div class="fill" id="playerFill"></div><span class="hptext" id="playerHpText">HP 100 / 100</span></div>
-          <div id="hand"></div>
+          <div id="actions">
+            <button class="act-btn hit" id="hitBtn">ヒット<span class="act-sub">もう1枚引く（H）</span></button>
+            <button class="act-btn stand" id="standBtn">スタンド<span class="act-sub">今の手で勝負（S）</span></button>
+          </div>
         </section>
       </div>
 
@@ -469,8 +482,12 @@
 
       <!-- TITLE SCREEN -->
       <div class="screen" id="titleScreen">
-        <h1 class="game-title">ハイカード<span class="accent">バトル</span></h1>
-        <p class="rule-line">敵より大きいカードを出して攻撃！強いカードは温存もできる</p>
+        <h1 class="game-title">ブラックジャック<span class="accent">バトル</span></h1>
+        <div class="rule-box">
+          <p class="rule-line">・21に近い方が勝ち。21を超えたらバーストで負け</p>
+          <p class="rule-line">・ヒット＝もう1枚引く／スタンド＝今の手で勝負。2枚で21のブラックジャックは大ダメージ！</p>
+          <p class="rule-line">・敵のHPを0にすればラウンドクリア。自分のHPが0でゲームオーバー</p>
+        </div>
         <div class="title-stats">
           <span class="stat-chip">ベストスコア <b id="titleBest">0</b></span>
           <span class="stat-chip">到達ラウンド <b id="titleRound">-</b></span>
@@ -488,7 +505,7 @@
       <div class="screen dim hidden" id="pauseScreen">
         <h2 class="big-result">ポーズ中</h2>
         <div class="btn-col">
-          <button class="btn btn-primary" id="resumeBtn">再開する</button>
+          <button class="btn btn-primary" id="resumeBtn">つづける</button>
           <button class="btn btn-ghost" id="restartBtn">リスタート</button>
           <button class="btn btn-ghost" id="pauseMuteBtn">サウンド：ON</button>
           <a class="btn btn-ghost" href="../index.html">ホームへ戻る</a>
@@ -502,7 +519,7 @@
         <div class="over-stats">
           <div class="over-row"><span>スコア</span><b id="overScore">0</b></div>
           <div class="over-row"><span>到達ラウンド</span><b id="overRound">1</b></div>
-          <div class="over-row"><span>最大コンボ</span><b id="overCombo">0</b></div>
+          <div class="over-row"><span>最大連勝</span><b id="overCombo">0</b></div>
         </div>
         <div class="section-label">ミッション達成状況</div>
         <div class="mission-list" id="overMissions"></div>
@@ -527,18 +544,18 @@
       var totalData = loadJSON(LS_TOTAL, { total: 0 });
       var missionsDone = loadJSON(LS_MISS, {});
       var THEMES = [
-        { id: "classic", name: "クラシック", need: 0 },
-        { id: "gold", name: "ゴールド", need: 5000 },
-        { id: "sakura", name: "サクラ", need: 15000 },
-        { id: "galaxy", name: "ギャラクシー", need: 30000 }
+        { id: "classic", name: "ノーマル", need: 0 },
+        { id: "crimson", name: "クリムゾン", need: 3000 },
+        { id: "royal", name: "ロイヤル", need: 10000 },
+        { id: "gold", name: "ゴールド", need: 25000 }
       ];
       var MISSIONS = [
-        { id: "r3", label: "ラウンド3に到達する" },
-        { id: "boss", label: "ボスを倒す" },
-        { id: "dmg100", label: "1ターンで100ダメージ以上与える" },
-        { id: "fever", label: "FEVERを発動する" },
-        { id: "trump", label: "切り札★で勝利する" },
-        { id: "total10k", label: "累計スコア10,000点に到達する" }
+        { id: "firstwin", label: "はじめの一勝：初めてハンドに勝利" },
+        { id: "bj", label: "ブラックジャック！：ブラックジャックで勝利" },
+        { id: "streak3", label: "三連勝：3連勝を達成" },
+        { id: "boss", label: "ボスハンター：ボスを撃破" },
+        { id: "fever", label: "フィーバー！：FEVERを発動" },
+        { id: "highroller", label: "ハイローラー：1ゲームでスコア5000点到達" }
       ];
       var themeId = (function () {
         var t = loadJSON(LS_THEME, "classic");
@@ -592,16 +609,17 @@
       }
       function sfxClick() { tone(1250, 900, 0.05, "square", 0.18); }
       function sfxFlip() { noiseBurst(0.12, 900, 2600, "bandpass", 0.22); }
-      function sfxWin(diff) {
+      function sfxWin(big) {
         noiseBurst(0.16, 3200, 500, "highpass", 0.5);
-        tone(700 + diff * 60, 180, 0.18, "sawtooth", 0.35);
-        tone(1400 + diff * 80, 700, 0.12, "square", 0.16, 0.02);
+        tone(big ? 700 : 620, 180, 0.18, "sawtooth", 0.35);
+        tone(big ? 1500 : 1250, 700, 0.12, "square", 0.16, 0.02);
       }
       function sfxLose() {
         tone(160, 38, 0.3, "sine", 0.65);
         noiseBurst(0.22, 500, 120, "lowpass", 0.5);
       }
       function sfxDraw() { tone(520, 520, 0.09, "triangle", 0.3); tone(660, 660, 0.1, "triangle", 0.3, 0.09); }
+      function sfxBJ() { [523, 659, 784, 1047, 1319, 1568].forEach(function (f, i) { tone(f, f, 0.18, "square", 0.3, i * 0.07); }); noiseBurst(0.5, 2000, 6000, "highpass", 0.2, 0.05); }
       function sfxFever() { [523, 659, 784, 1047, 1319].forEach(function (f, i) { tone(f, f, 0.16, "square", 0.3, i * 0.09); }); noiseBurst(0.4, 2000, 5000, "highpass", 0.15, 0.1); }
       function sfxClear() { [659, 784, 988, 1319].forEach(function (f, i) { tone(f, f, 0.15, "triangle", 0.32, i * 0.1); }); }
       function sfxOver() { [392, 330, 262, 196].forEach(function (f, i) { tone(f, f * 0.94, 0.24, "triangle", 0.32, i * 0.16); }); }
@@ -610,65 +628,144 @@
 
       /* ================= GAME STATE ================= */
       var SUITS = [["♠", "suit-black"], ["♥", "suit-red"], ["♦", "suit-red"], ["♣", "suit-black"]];
+      var FOES = [
+        { face: "💧", name: "スライム" },
+        { face: "👺", name: "ゴブリン" },
+        { face: "🦇", name: "コウモリバット" },
+        { face: "🐺", name: "シャドウウルフ" },
+        { face: "🕷️", name: "ジャイアントスパイダー" },
+        { face: "🧟", name: "ゾンビ" },
+        { face: "🦂", name: "デススコーピオン" },
+        { face: "🐍", name: "ポイズンバイパー" },
+        { face: "👹", name: "オーガ" },
+        { face: "🧛", name: "ヴァンパイア" }
+      ];
+      var BOSSES = [
+        { face: "🐉", name: "レッドドラゴン" },
+        { face: "😈", name: "デーモンロード" },
+        { face: "🐲", name: "エンシェントドラゴン" },
+        { face: "💀", name: "リッチキング" },
+        { face: "👾", name: "カオスビースト" }
+      ];
       var state = "title"; // title | playing | paused | over
-      var deck = [], discard = [], hand = [];
-      var playerHP = 100, enemyHP = 60, enemyMaxHP = 60, enemyCard = 0;
-      var round = 1, score = 0, streak = 0, maxCombo = 0, feverTurns = 0;
+      var phase = "idle"; // idle | player | enemy | done
+      var deck = [];
+      var playerCards = [], enemyCards = [];
+      var holeHidden = true;
+      var playerHP = 100, enemyHP = 40, enemyMaxHP = 40;
+      var round = 1, score = 0, streak = 0, maxStreak = 0, feverHands = 0;
       var busy = false, runMissions = {};
+      var session = 0;
 
       function $(id) { return document.getElementById(id); }
       var stage = $("stage");
       function fmt(n) { return n.toLocaleString("ja-JP"); }
       function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+      async function waitPlay() { while (state === "paused") { await sleep(120); } }
       function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 
       function buildDeck() {
         deck = [];
         for (var v = 1; v <= 13; v++) for (var s = 0; s < 4; s++) deck.push({ v: v, suit: s });
-        deck.push({ v: 14, suit: 0 }, { v: 14, suit: 1 });
-        shuffle(deck); discard = [];
+        shuffle(deck);
       }
       function drawCard() {
-        if (deck.length === 0) { deck = shuffle(discard.slice()); discard = []; }
+        if (deck.length === 0) buildDeck();
         return deck.pop();
       }
       function isBoss(r) { return r % 5 === 0; }
-      function enemyMaxFor(r) { return isBoss(r) ? 140 + r * 4 : 50 + r * 10; }
-      function enemyCardFor(r) {
-        var max = r === 1 ? 9 : (r === 2 ? 11 : 13);
-        var a = 1 + Math.floor(Math.random() * max);
-        if (isBoss(r)) { var b = 1 + Math.floor(Math.random() * max); return Math.max(a, b); }
-        return a;
+      function foeFor(r) {
+        if (isBoss(r)) return BOSSES[(r / 5 - 1) % BOSSES.length];
+        return FOES[(r - 1) % FOES.length];
       }
-      function rankLabel(v) { return v === 14 ? "★" : (v === 1 ? "A" : (v === 11 ? "J" : (v === 12 ? "Q" : (v === 13 ? "K" : String(v))))); }
+      function enemyMaxFor(r) {
+        var base = 40 + 10 * (r - 1);
+        return isBoss(r) ? Math.round(base * 1.6) : base;
+      }
+      function rankLabel(v) { return v === 1 ? "A" : (v === 11 ? "J" : (v === 12 ? "Q" : (v === 13 ? "K" : String(v)))); }
+      function handValue(cards) {
+        var t = 0, aces = 0;
+        cards.forEach(function (c) { t += (c.v === 1 ? 1 : Math.min(c.v, 10)); if (c.v === 1) aces++; });
+        var soft = false;
+        if (aces > 0 && t + 10 <= 21) { t += 10; soft = true; }
+        return { total: t, soft: soft, bust: t > 21, bj: cards.length === 2 && t === 21 };
+      }
 
       /* ================= RENDER ================= */
       function cardFrontHTML(card) {
-        if (card.v === 14) {
-          return '<div class="card-corner"><span class="num">14</span><span class="suit">★</span></div>' +
-            '<div class="card-center"><div><div class="big">★</div></div></div>' +
-            '<div class="card-bottom"><div class="card-corner"><span class="num">14</span><span class="suit">★</span></div></div>';
-        }
         var s = SUITS[card.suit];
         return '<div class="card-corner ' + s[1] + '"><span class="num">' + rankLabel(card.v) + '</span><span class="suit">' + s[0] + '</span></div>' +
           '<div class="card-center"><div style="text-align:center"><div class="big ' + s[1] + '">' + rankLabel(card.v) + '</div><div class="bigsuit ' + s[1] + '">' + s[0] + '</div></div></div>' +
           '<div class="card-bottom"><div class="card-corner ' + s[1] + '"><span class="num">' + rankLabel(card.v) + '</span><span class="suit">' + s[0] + '</span></div></div>';
       }
+      function makeCardEl(card, faceUp, delay) {
+        var wrap = document.createElement("div");
+        wrap.className = "card3d deal";
+        wrap.style.animationDelay = (delay || 0) + "s";
+        var inner = document.createElement("div");
+        inner.className = "card-inner";
+        inner.innerHTML = '<div class="card-face card-back back-' + themeId + '"></div>' +
+          '<div class="card-face card-front">' + cardFrontHTML(card) + "</div>";
+        wrap.appendChild(inner);
+        if (faceUp) {
+          requestAnimationFrame(function () { requestAnimationFrame(function () { inner.classList.add("flipped"); }); });
+        }
+        return wrap;
+      }
+      function renderCards(el, cards, faceUpFn) {
+        el.innerHTML = "";
+        el.classList.toggle("tight", cards.length > 4);
+        cards.forEach(function (c, i) { el.appendChild(makeCardEl(c, faceUpFn(i), i * 0.09)); });
+      }
+      function renderPlayerCards() {
+        renderCards($("playerCards"), playerCards, function () { return true; });
+      }
+      function renderEnemyCards() {
+        renderCards($("enemyCards"), enemyCards, function (i) { return i !== 1 || !holeHidden; });
+      }
       function applyTheme() {
-        ["enemyCardBack", "deckBack"].forEach(function (id) {
+        ["deckBack"].forEach(function (id) {
           var el = $(id);
+          el.className = el.className.replace(/back-\w+/g, "").trim() + " back-" + themeId;
+        });
+        document.querySelectorAll(".card-back").forEach(function (el) {
           el.className = el.className.replace(/back-\w+/g, "").trim() + " back-" + themeId;
         });
         document.querySelectorAll(".theme-btn").forEach(function (b) {
           b.classList.toggle("sel", b.getAttribute("data-theme") === themeId);
         });
       }
-      function liveTotal() { return totalData.total + (state === "playing" || state === "paused" || state === "over" ? score : 0); }
       function updateThemeHud() {
         var t = totalData.total + score;
         var next = null;
         for (var i = 0; i < THEMES.length; i++) if (t < THEMES[i].need) { next = THEMES[i]; break; }
         $("hudTheme").textContent = next ? ("次のテーマ「" + next.name + "」まであと " + fmt(next.need - t) + "点") : "全テーマ解放済み！";
+      }
+      function updateTotals() {
+        var pt = $("playerTotal"), et = $("enemyTotal");
+        if (playerCards.length) {
+          var pv = handValue(playerCards);
+          pt.textContent = pv.soft ? ("合計 " + (pv.total - 10) + " or " + pv.total) : ("合計 " + pv.total);
+          pt.classList.toggle("bust", pv.bust);
+          pt.classList.toggle("bj", pv.bj);
+        } else { pt.textContent = "合計 0"; pt.classList.remove("bust", "bj"); }
+        if (enemyCards.length) {
+          if (holeHidden) {
+            var up = handValue([enemyCards[0]]);
+            et.textContent = "敵の合計 " + up.total + " + ？";
+            et.classList.remove("bust", "bj");
+          } else {
+            var ev = handValue(enemyCards);
+            et.textContent = "敵の合計 " + ev.total;
+            et.classList.toggle("bust", ev.bust);
+            et.classList.toggle("bj", ev.bj);
+          }
+        } else { et.textContent = "敵の合計 ？"; et.classList.remove("bust", "bj"); }
+      }
+      function updateActions() {
+        var on = state === "playing" && phase === "player" && !busy;
+        $("hitBtn").disabled = !on;
+        $("standBtn").disabled = !on;
       }
       function updateHUD() {
         $("hudScore").textContent = fmt(score);
@@ -680,23 +777,10 @@
         $("deckCount").textContent = deck.length;
         $("comboNum").textContent = streak;
         $("comboBadge").classList.toggle("on", streak >= 2);
-        $("feverBadge").classList.toggle("on", feverTurns > 0);
-        $("feverLeft").textContent = feverTurns;
-        stage.classList.toggle("fever", feverTurns > 0);
+        $("feverBadge").classList.toggle("on", feverHands > 0);
+        $("feverLeft").textContent = feverHands;
+        stage.classList.toggle("fever", feverHands > 0);
         updateThemeHud();
-      }
-      function renderHand() {
-        var handEl = $("hand"); handEl.innerHTML = "";
-        hand.forEach(function (card, i) {
-          var d = document.createElement("div");
-          d.className = "hand-card" + (card.v > enemyCard ? " beats" : "");
-          d.style.animationDelay = (i * 0.07) + "s";
-          d.setAttribute("role", "button");
-          d.setAttribute("aria-label", "カード " + (card.v === 14 ? "切り札14" : card.v) + " を出す");
-          d.innerHTML = '<span class="key-hint">' + (i + 1) + '</span><div class="card-face card-front' + (card.v === 14 ? " trump" : "") + '">' + cardFrontHTML(card) + "</div>";
-          d.addEventListener("click", function () { playCard(i); });
-          handEl.appendChild(d);
-        });
       }
       function renderMissions(el) {
         el.innerHTML = "";
@@ -716,7 +800,7 @@
           b.className = "theme-btn" + (themeId === t.id ? " sel" : "") + (unlocked ? "" : " locked");
           b.setAttribute("data-theme", t.id);
           b.innerHTML = '<span class="swatch back-' + t.id + '"></span><span>' + t.name + "</span>" +
-            (unlocked ? '<span class="lock-note">&nbsp;</span>' : '<span class="lock-note">' + fmt(t.need) + "点で解放</span>");
+            (unlocked ? '<span class="lock-note">&nbsp;</span>' : '<span class="lock-note">累計' + fmt(t.need) + "点で解放</span>");
           b.addEventListener("click", function () {
             ensureAudio();
             if (totalData.total < t.need) return;
@@ -744,7 +828,7 @@
         return sleep(ms).then(function () { stage.classList.remove("hitstop"); });
       }
       function particles(x, y, color, count, glyph) {
-        var fx = $("fx"), rect = stage.getBoundingClientRect();
+        var fx = $("fx");
         for (var i = 0; i < count; i++) {
           var p = document.createElement("span");
           p.className = "particle"; p.textContent = glyph;
@@ -781,9 +865,8 @@
         if (missionsDone[id] || runMissions[id]) return;
         runMissions[id] = true; missionsDone[id] = true; saveJSON(LS_MISS, missionsDone);
         var m = MISSIONS.find(function (x) { return x.id === id; });
-        showBanner("★ ミッション達成： " + m.label);
+        if (m) showBanner("★ ミッション達成： " + m.label.split("：")[0]);
       }
-      function checkTotalMission() { if (totalData.total + score >= 10000) achieve("total10k"); }
 
       /* ================= FLOW ================= */
       function setResult(text, cls) {
@@ -791,162 +874,251 @@
         r.textContent = text; r.className = cls || "";
         void r.offsetWidth; if (text) r.classList.add("pop");
       }
-      function revealEnemy() {
-        var front = $("enemyCardFront");
-        front.className = "card-face card-front" + (enemyCard === 14 ? " trump" : "");
-        front.innerHTML = cardFrontHTML({ v: enemyCard, suit: enemyCard % 4 });
-        var inner = $("enemyCardInner");
-        inner.classList.remove("flipped");
-        sfxFlip();
-        requestAnimationFrame(function () { requestAnimationFrame(function () { inner.classList.add("flipped"); }); });
+      function setPrompt(text) { $("promptText").textContent = text; }
+      function showHint() {
+        var pv = handValue(playerCards);
+        var up = handValue([enemyCards[0]]).total;
+        var t = pv.total, msg;
+        if (t === 21) msg = "21！文句なし。スタンドで勝負！";
+        else if (pv.soft && t <= 18) msg = "エースがあるからバーストしない！ヒットもアリ";
+        else if (t <= 11) msg = "バーストしない！ヒットしよう";
+        else if (t <= 16) msg = up <= 6 ? "敵の表カードが弱い。無理せずスタンドも手" : "敵の表カードが強い…ヒットで逆転を狙おう";
+        else msg = "無理するとバースト…スタンドが安全";
+        setPrompt(msg);
       }
+      function glowCards(el, cls) {
+        el.querySelectorAll(".card-front").forEach(function (f) { f.classList.add(cls); });
+      }
+
+      async function dealHand() {
+        var s = session;
+        phase = "player"; busy = true; holeHidden = true;
+        setResult("", "");
+        if (deck.length < 15) buildDeck();
+        playerCards = [drawCard(), drawCard()];
+        enemyCards = [drawCard(), drawCard()];
+        renderEnemyCards(); renderPlayerCards();
+        sfxFlip();
+        updateTotals(); updateHUD(); updateActions();
+        setPrompt("カードを配っています…");
+        await sleep(700);
+        await waitPlay();
+        if (s !== session || state !== "playing") return;
+        var pv = handValue(playerCards);
+        if (pv.bj) { await resolveBlackjack(); return; }
+        showHint();
+        busy = false; updateActions();
+      }
+
+      async function doHit() {
+        if (state !== "playing" || phase !== "player" || busy) return;
+        var s = session;
+        busy = true; ensureAudio(); updateActions();
+        playerCards.push(drawCard());
+        sfxFlip();
+        renderPlayerCards(); updateTotals(); updateHUD();
+        await sleep(430);
+        await waitPlay();
+        if (s !== session || state !== "playing") return;
+        var pv = handValue(playerCards);
+        if (pv.bust) { await resolveHand("bust"); return; }
+        if (pv.total === 21) { busy = false; await doStand(); return; }
+        showHint();
+        busy = false; updateActions();
+      }
+
+      async function doStand() {
+        if (state !== "playing" || phase !== "player" || busy) return;
+        var s = session;
+        busy = true; ensureAudio(); phase = "enemy"; updateActions();
+        setPrompt("敵のターン…伏せカードをめくります");
+        holeHidden = false;
+        renderEnemyCards(); sfxFlip(); updateTotals();
+        await sleep(600);
+        var ev = handValue(enemyCards);
+        while (ev.total < 17) {
+          await sleep(520);
+          await waitPlay();
+          if (s !== session || state !== "playing") return;
+          enemyCards.push(drawCard());
+          renderEnemyCards(); sfxFlip(); updateTotals(); updateHUD();
+          ev = handValue(enemyCards);
+          await sleep(200);
+        }
+        await sleep(350);
+        await resolveHand("showdown");
+      }
+
+      async function resolveBlackjack() {
+        var s = session;
+        phase = "enemy"; updateActions();
+        setPrompt("ブラックジャック！敵の伏せカードをめくります");
+        setResult("BLACKJACK!", "win");
+        sfxBJ(); shake("lg");
+        holeHidden = false;
+        renderEnemyCards(); updateTotals();
+        await sleep(800);
+        await waitPlay();
+        if (s !== session || state !== "playing") return;
+        var ev = handValue(enemyCards);
+        if (ev.bj) { await resolveHand("push"); return; }
+        await resolveHand("blackjack");
+      }
+
+      async function resolveHand(kind) {
+        var s = session;
+        phase = "done"; updateActions();
+        var pv = handValue(playerCards), ev = handValue(enemyCards);
+        var inFever = feverHands > 0;
+        var result, dmg = 0, taken = 0, gain = 0;
+        if (kind === "bust") { result = "lose"; taken = 10; }
+        else if (kind === "blackjack") { result = "win"; dmg = 40; }
+        else if (kind === "push") { result = "push"; }
+        else {
+          if (ev.bust) { result = "win"; dmg = pv.total === 21 ? 30 : pv.total; }
+          else if (pv.total > ev.total) { result = "win"; dmg = pv.total === 21 ? 30 : pv.total; }
+          else if (pv.total < ev.total) { result = "lose"; taken = Math.max(5, ev.total - 5); }
+          else result = "push";
+        }
+        var enemyPos = centerOf($("enemyCards"));
+        var myPos = centerOf($("playerCards"));
+
+        if (result === "win") {
+          if (inFever) dmg = Math.round(dmg * 1.5);
+          gain = dmg * 10 + (kind === "blackjack" ? 300 : 0);
+          if (inFever) gain *= 2;
+          score += gain;
+          streak++; if (streak > maxStreak) maxStreak = streak;
+          enemyHP -= dmg;
+          if (kind === "blackjack") { sfxBJ(); shake("xl"); } else { sfxWin(dmg >= 25); shake(kind === "showdown" && ev.bust ? "lg" : "sm"); }
+          await hitStop(kind === "blackjack" ? 160 : 90);
+          var hm = $("hitMark"); hm.textContent = kind === "blackjack" ? "BJ!" : "★";
+          hm.style.fontSize = kind === "blackjack" ? "3.6rem" : "6rem";
+          hm.classList.remove("show"); void hm.offsetWidth; hm.classList.add("show");
+          glowCards($("playerCards"), "win-glow");
+          particles(enemyPos.x, enemyPos.y, "#ffd94d", kind === "blackjack" ? 26 : 16, "★");
+          particles(enemyPos.x, enemyPos.y, "#fff3b0", 8, "✦");
+          if (kind === "blackjack") setResult("BLACKJACK! " + dmg + "ダメージ", "win");
+          else if (kind === "showdown" && ev.bust) setResult("敵がバースト！ " + dmg + "ダメージ", "win");
+          else setResult("WIN! " + dmg + "ダメージ", "win");
+          floatText(enemyPos.x, enemyPos.y - 30, "-" + dmg, "#ffd94d", kind === "blackjack" ? "2.6rem" : "2.2rem");
+          setPrompt("スコア +" + fmt(gain) + "点" + (inFever ? "（FEVER×2）" : ""));
+          achieve("firstwin");
+          if (kind === "blackjack") achieve("bj");
+          if (streak >= 3) achieve("streak3");
+          if (!inFever && streak >= 3) {
+            feverHands = 5;
+            achieve("fever"); sfxFever();
+            showBanner("FEVER発動！ 次の5ハンドはダメージ×1.5・スコア×2");
+          }
+          $("enemyBar").classList.add("hurt"); setTimeout(function () { $("enemyBar").classList.remove("hurt"); }, 300);
+        } else if (result === "lose") {
+          playerHP -= taken;
+          if (!inFever) streak = 0;
+          sfxLose(); shake("lg");
+          glowCards($("playerCards"), "lose-glow");
+          particles(myPos.x, myPos.y, "#ff5f4d", 14, "●");
+          if (kind === "bust") setResult("バースト… " + taken + "ダメージを受けた", "lose");
+          else setResult("LOSE… " + taken + "ダメージを受けた", "lose");
+          floatText(myPos.x, myPos.y - 40, "-" + taken, "#ff7a66", "2rem");
+          setPrompt(kind === "bust" ? "21を超えてしまった…" : "敵は " + ev.total + "。あと一歩だった…");
+          $("playerBar").classList.add("hurt"); setTimeout(function () { $("playerBar").classList.remove("hurt"); }, 300);
+        } else {
+          sfxDraw();
+          score += 30;
+          setResult("引き分け（プッシュ） +30点", "draw");
+          floatText(enemyPos.x, enemyPos.y - 30, "+30", "#d9ecff", "1.5rem");
+          setPrompt("両者ノーダメージ。次のハンドへ！");
+        }
+        if (inFever) feverHands--;
+        if (score >= 5000) achieve("highroller");
+        updateHUD();
+        await sleep(1050);
+        await waitPlay();
+        if (s !== session || state !== "playing") return;
+        if (enemyHP <= 0) { await roundClear(); return; }
+        if (playerHP <= 0) { await gameOver(); return; }
+        dealHand();
+      }
+
       function startRound() {
         enemyMaxHP = enemyMaxFor(round); enemyHP = enemyMaxHP;
+        var foe = foeFor(round), boss = isBoss(round);
         $("roundLabel").textContent = "ROUND " + round;
-        $("foeName").textContent = isBoss(round) ? "ボス" : "ENEMY";
-        $("bossBadge").classList.toggle("on", isBoss(round));
-        if (round >= 3) achieve("r3");
-        enemyCard = enemyCardFor(round);
-        revealEnemy(); renderHand(); updateHUD();
-        setResult("", "");
-        $("promptText").textContent = isBoss(round) ? "ボス戦！敵は2枚引いて強い方を出す" : "敵のカードは " + enemyCard + "。上回るカードを選ぼう！";
-        busy = false;
+        $("foeFace").textContent = foe.face;
+        $("foeName").textContent = foe.name;
+        $("bossBadge").classList.toggle("on", boss);
+        $("enemyZone").classList.toggle("boss", boss);
+        updateHUD();
+        dealHand();
       }
       function newGame() {
+        session++;
         buildDeck();
-        hand = [drawCard(), drawCard(), drawCard()];
-        playerHP = 100; round = 1; score = 0; streak = 0; maxCombo = 0; feverTurns = 0;
+        playerCards = []; enemyCards = [];
+        playerHP = 100; round = 1; score = 0; streak = 0; maxStreak = 0; feverHands = 0;
         runMissions = {};
-        state = "playing";
+        state = "playing"; phase = "idle"; busy = false;
         $("titleScreen").classList.add("hidden");
         $("overScreen").classList.add("hidden");
         $("pauseScreen").classList.add("hidden");
-        updateHUD(); startRound(); bgmPlay();
-      }
-      async function playCard(idx) {
-        if (state !== "playing" || busy) return;
-        busy = true; ensureAudio(); sfxClick();
-        var card = hand[idx];
-        var cardEls = document.querySelectorAll(".hand-card");
-        if (cardEls[idx]) cardEls[idx].classList.add("selected");
-        await sleep(130);
-        var mine = card.v, foe = enemyCard;
-        var enemyPos = centerOf($("enemyCardWrap"));
-        var myPos = cardEls[idx] ? centerOf(cardEls[idx]) : { x: window.innerWidth / 2, y: window.innerHeight * 0.7 };
-
-        if (mine > foe) {
-          /* ---- WIN ---- */
-          streak++; if (streak > maxCombo) maxCombo = streak;
-          var diff = mine - foe;
-          var mult = Math.min(streak, 3);
-          var dmg = diff * 10 * mult * (feverTurns > 0 ? 2 : 1);
-          sfxWin(diff);
-          await hitStop(Math.min(60 + diff * 10, 150));
-          shake(isBoss(round) && enemyHP - dmg <= 0 ? "xl" : "sm");
-          var hm = $("hitMark"); hm.classList.remove("show"); void hm.offsetWidth; hm.classList.add("show");
-          $("enemyCardFront").classList.add("win-glow");
-          particles(enemyPos.x, enemyPos.y, "#ffd94d", 16, "★");
-          particles(enemyPos.x, enemyPos.y, "#fff3b0", 8, "✦");
-          enemyHP -= dmg; score += dmg;
-          setResult("WIN! " + dmg + "ダメージ", "win");
-          floatText(enemyPos.x, enemyPos.y - 30, "-" + dmg, "#ffd94d", "2.2rem");
-          if (dmg >= 100) achieve("dmg100");
-          if (mine === 14) achieve("trump");
-          if (feverTurns > 0) feverTurns--;
-          else if (streak >= 3) {
-            feverTurns = 5; achieve("fever"); sfxFever();
-            showBanner("FEVER発動！ 次の5ターンはダメージ×2");
-          }
-          $("enemyBar").classList.add("hurt"); setTimeout(function () { $("enemyBar").classList.remove("hurt"); }, 300);
-        } else if (mine < foe) {
-          /* ---- LOSE ---- */
-          var ldiff = foe - mine;
-          var taken = Math.min(ldiff * 8, 40);
-          sfxLose();
-          shake("lg");
-          $("enemyCardFront").classList.add("lose-glow");
-          if (cardEls[idx]) cardEls[idx].classList.add("bursting");
-          particles(myPos.x, myPos.y, "#ff5f4d", 14, "●");
-          playerHP -= taken; streak = 0;
-          if (feverTurns > 0) feverTurns--;
-          setResult("LOSE… " + taken + "ダメージを受けた", "lose");
-          floatText(myPos.x, myPos.y - 40, "-" + taken, "#ff7a66", "2rem");
-          $("playerBar").classList.add("hurt"); setTimeout(function () { $("playerBar").classList.remove("hurt"); }, 300);
-        } else {
-          /* ---- DRAW ---- */
-          sfxDraw();
-          score += 50;
-          if (feverTurns > 0) feverTurns--;
-          setResult("引き分け +50点", "draw");
-          floatText(enemyPos.x, enemyPos.y - 30, "+50", "#d9ecff", "1.5rem");
-        }
-        discard.push(card);
-        checkTotalMission();
         updateHUD();
-        await sleep(620);
-
-        if (enemyHP <= 0) { await roundClear(); return; }
-        if (playerHP <= 0) { await gameOver(); return; }
-
-        hand.splice(idx, 1); hand.push(drawCard());
-        enemyCard = enemyCardFor(round);
-        $("enemyCardFront").classList.remove("win-glow", "lose-glow");
-        revealEnemy(); renderHand(); updateHUD();
-        setResult("", "");
-        $("promptText").textContent = "敵のカードは " + enemyCard + "。上回るカードを選ぼう！";
-        busy = false;
+        startRound(); bgmPlay();
       }
       async function roundClear() {
+        var s = session;
         var wasBoss = isBoss(round);
         if (wasBoss) achieve("boss");
-        var bonus = 500 + playerHP * 5;
+        var bonus = 500 + (wasBoss ? 1000 : 0);
         score += bonus;
         sfxClear();
         if (wasBoss) shake("xl");
         var cf = $("clearFlash");
-        $("clearSub").textContent = "ボーナス +" + fmt(bonus) + "点　HP +25回復";
+        $("clearSub").textContent = (wasBoss ? "ボス撃破ボーナス込み " : "") + "ボーナス +" + fmt(bonus) + "点　HP +25回復";
         cf.classList.add("show");
-        checkTotalMission(); updateHUD();
-        await sleep(1150);
+        updateHUD();
+        await sleep(1250);
         cf.classList.remove("show");
+        await waitPlay();
+        if (s !== session || state !== "playing") return;
         playerHP = Math.min(100, playerHP + 25);
         round++;
         startRound();
       }
       async function gameOver() {
-        state = "over"; bgmStop(); sfxOver(); shake("xl");
+        state = "over"; phase = "idle"; bgmStop(); sfxOver(); shake("xl");
         await sleep(500);
         var isRecord = score > best.score;
         if (isRecord) best.score = score;
         if (round > best.round) best.round = round;
-        if (maxCombo > best.combo) best.combo = maxCombo;
+        if (maxStreak > best.combo) best.combo = maxStreak;
         saveJSON(LS_BEST, best);
         totalData.total += score; saveJSON(LS_TOTAL, totalData);
-        checkTotalMission();
         $("overScore").textContent = fmt(score);
         $("overRound").textContent = round;
-        $("overCombo").textContent = maxCombo + "連勝";
+        $("overCombo").textContent = maxStreak + "連勝";
         $("newRecord").classList.toggle("on", isRecord);
         renderMissions($("overMissions"));
         $("overScreen").classList.remove("hidden");
-        updateHUD();
+        updateHUD(); updateActions();
       }
       function pauseGame() {
         if (state !== "playing") return;
         state = "paused"; bgmStop();
         $("pauseMuteBtn").textContent = "サウンド：" + (muted ? "OFF" : "ON");
         $("pauseScreen").classList.remove("hidden");
+        updateActions();
       }
       function resumeGame() {
         if (state !== "paused") return;
         state = "playing";
         $("pauseScreen").classList.add("hidden");
-        bgmPlay();
+        bgmPlay(); updateActions();
       }
       function setMuted(m) {
         muted = m;
         bgmEl.muted = m;
-        $("muteBtn").textContent = m ? "✕" : "♪";
+        $("muteBtn").textContent = m ? "🔇" : "🔊";
         $("muteBtn").style.opacity = m ? 0.55 : 1;
         $("pauseMuteBtn").textContent = "サウンド：" + (m ? "OFF" : "ON");
         if (m) bgmEl.pause(); else if (state === "playing") bgmPlay();
@@ -960,19 +1132,26 @@
       $("pauseBtn").addEventListener("click", function () { ensureAudio(); if (state === "playing") pauseGame(); });
       $("muteBtn").addEventListener("click", function () { ensureAudio(); setMuted(!muted); });
       $("pauseMuteBtn").addEventListener("click", function () { ensureAudio(); setMuted(!muted); });
+      $("hitBtn").addEventListener("click", function (e) { e.currentTarget.blur(); doHit(); });
+      $("standBtn").addEventListener("click", function (e) { e.currentTarget.blur(); doStand(); });
       document.addEventListener("keydown", function (e) {
-        if (e.key === "1" || e.key === "2" || e.key === "3") { if (state === "playing") playCard(Number(e.key) - 1); }
-        else if (e.key === "p" || e.key === "P") { if (state === "playing") pauseGame(); else if (state === "paused") resumeGame(); }
-        else if (e.key === "m" || e.key === "M") { ensureAudio(); setMuted(!muted); }
-        else if (e.key === "Enter" || e.key === " ") {
-          if (state === "title") { ensureAudio(); newGame(); }
-          else if (state === "over") { ensureAudio(); newGame(); }
+        if (state === "playing") {
+          if (e.key === "h" || e.key === "H") { doHit(); }
+          else if (e.key === "s" || e.key === "S" || e.key === " ") { e.preventDefault(); doStand(); }
+          else if (e.key === "p" || e.key === "P") { pauseGame(); }
+          else if (e.key === "m" || e.key === "M") { ensureAudio(); setMuted(!muted); }
+        } else if (state === "paused") {
+          if (e.key === "p" || e.key === "P" || e.key === "Enter") { resumeGame(); }
+          else if (e.key === "m" || e.key === "M") { ensureAudio(); setMuted(!muted); }
+        } else if (state === "title" || state === "over") {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); ensureAudio(); newGame(); }
+          else if (e.key === "m" || e.key === "M") { ensureAudio(); setMuted(!muted); }
         }
       });
       document.addEventListener("touchmove", function (e) { if (!e.target.closest(".screen")) e.preventDefault(); }, { passive: false });
       document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
 
-      renderTitle(); updateHUD();
+      renderTitle(); updateHUD(); updateTotals(); updateActions();
     </script>
   </body>
 </html>
